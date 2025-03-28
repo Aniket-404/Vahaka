@@ -1,189 +1,242 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  Alert,
-  Switch,
-  Text,
-  Platform,
-} from 'react-native';
-import { router } from 'expo-router';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, RefreshControl, Switch } from 'react-native';
+import { useRouter } from 'expo-router';
+import { COLORS, FONTS, FONT_SIZES, SPACING, SHADOWS } from '../../constants/theme';
+import { authService, driverService, tripService } from '../../services';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
-import { COLORS, FONTS, FONT_SIZES, SPACING } from '../../constants/theme';
-import { driverService } from '../../services/driverService';
-import { db } from '../../services/firebase';
-import { Driver } from '../../types/driver';
-
-const testConnection = async () => {
-  try {
-    const docRef = await addDoc(collection(db, "test"), {
-      test: "Hello Firebase!"
-    });
-    console.log("Document written with ID: ", docRef.id);
-  } catch (error) {
-    console.error("Error adding document: ", error);
-  }
-};
+import { Driver } from '../../models/Driver';
+import { Trip } from '../../models/Trip';
 
 export default function HomeScreen() {
   const [driver, setDriver] = useState<Driver | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAvailable, setIsAvailable] = useState(false);
+  const [currentTrip, setCurrentTrip] = useState<Trip | null>(null);
+  const [isOnline, setIsOnline] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const router = useRouter();
+
+  const loadDriverData = async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (!user) {
+        // Not logged in, redirect to login
+        router.replace('/auth/login');
+        return;
+      }
+
+      const driverData = await driverService.getDriver(user.uid);
+      if (driverData) {
+        setDriver(driverData);
+        setIsOnline(driverData.availability);
+      }
+    } catch (error) {
+      console.error('Error loading driver data:', error);
+      Alert.alert('Error', 'Failed to load your profile data');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const checkCurrentTrip = async () => {
+    try {
+      const user = authService.getCurrentUser();
+      if (!user) return;
+
+      // Use the unsubscribe function if needed to clean up
+      return tripService.watchDriverActiveTrip(user.uid, (trip) => {
+        setCurrentTrip(trip);
+      });
+    } catch (error) {
+      console.error('Error checking current trip:', error);
+    }
+  };
 
   useEffect(() => {
-    loadDriverProfile();
-    testFirebaseConnection();
+    loadDriverData();
+    const unsubscribe = checkCurrentTrip();
+    
+    // Clean up the subscription
+    return () => {
+      if (unsubscribe && typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 
-  const testFirebaseConnection = async () => {
+  const handleToggleAvailability = async () => {
+    if (!driver) return;
+    
     try {
-      const querySnapshot = await getDocs(collection(db, "test"));
-      querySnapshot.forEach((doc) => {
-        console.log("Test document data:", doc.data());
-      });
-      Alert.alert('Success', 'Firebase connection successful!');
+      await driverService.updateDriverAvailability(driver.id, !isOnline);
+      setIsOnline(!isOnline);
     } catch (error) {
-      console.error("Firebase connection error:", error);
-      Alert.alert('Error', 'Failed to connect to Firebase');
+      console.error('Error toggling availability:', error);
+      Alert.alert('Error', 'Failed to update your availability status');
     }
   };
 
-  const loadDriverProfile = async () => {
-    try {
-      // TODO: Replace with actual driver ID from authentication
-      const driverId = 'test-driver-id';
-      const driverData = await driverService.getDriver(driverId);
-      setDriver(driverData);
-      setIsAvailable(driverData?.availability || false);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to load profile. Please try again.');
-    } finally {
-      setLoading(false);
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadDriverData();
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return COLORS.success;
+      case 'pending': return COLORS.warning;
+      case 'rejected': return COLORS.error;
+      default: return COLORS.textSecondary;
     }
   };
 
-  const handleAvailabilityToggle = async () => {
-    try {
-      if (!driver?.id) return;
-      
-      const newAvailability = !isAvailable;
-      await driverService.updateDriverAvailability(driver.id, newAvailability);
-      setIsAvailable(newAvailability);
-      
-      Alert.alert(
-        'Success',
-        `You are now ${newAvailability ? 'available' : 'unavailable'} for trips.`
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update availability. Please try again.');
-    }
-  };
-
-  const createTestData = async () => {
-    try {
-      const result = await driverService.createTestDocuments();
-      Alert.alert(
-        'Success',
-        `Test documents created successfully!\nTest Doc ID: ${result.testDocId}\nDriver Doc ID: ${result.driverDocId}`
-      );
-    } catch (error) {
-      console.error('Error creating test data:', error);
-      Alert.alert('Error', 'Failed to create test documents');
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
-  if (!driver) {
-    return (
-      <View style={styles.container}>
-        <Card style={styles.card}>
-          <Text style={styles.title}>Welcome to Vahaka Partner</Text>
-          <Text style={styles.subtitle}>
-            Create your profile to start accepting trips
-          </Text>
-          <Button
-            title="Create Profile"
-            onPress={() => router.push('/create-profile')}
-            style={styles.button}
-          />
-          <Button
-            title="Create Test Data"
-            onPress={createTestData}
-            style={styles.button}
-            variant="secondary"
-          />
-        </Card>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <Card style={styles.card}>
-        <Text style={styles.title}>Profile Status</Text>
-        <View style={styles.statusContainer}>
-          <Text style={[
-            styles.statusText,
-            { color: driver.status === 'approved' ? COLORS.success : COLORS.warning }
-          ]}>
-            {driver.status.charAt(0).toUpperCase() + driver.status.slice(1)}
-          </Text>
-        </View>
-      </Card>
-
-      <Card style={styles.card}>
-        <Text style={styles.title}>Availability</Text>
+    <ScrollView 
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+      }
+    >
+      {/* Header with availability toggle */}
+      <View style={styles.header}>
+        <Text style={styles.welcomeText}>
+          Welcome, {driver?.name?.split(' ')[0] || 'Driver'}
+        </Text>
         <View style={styles.availabilityContainer}>
-          <Text style={styles.availabilityText}>
-            {isAvailable ? 'Available for trips' : 'Not available for trips'}
+          <Text style={styles.availabilityLabel}>
+            {isOnline ? 'Online' : 'Offline'}
           </Text>
           <Switch
-            value={isAvailable}
-            onValueChange={handleAvailabilityToggle}
-            trackColor={{ false: COLORS.border, true: COLORS.primary }}
+            value={isOnline}
+            onValueChange={handleToggleAvailability}
+            trackColor={{ false: COLORS.disabled, true: COLORS.primary }}
             thumbColor={COLORS.surface}
           />
         </View>
-      </Card>
+      </View>
 
-      <Card style={styles.card}>
-        <Text style={styles.title}>Profile Information</Text>
-        <View style={styles.infoContainer}>
-          <Text style={styles.infoLabel}>Name</Text>
-          <Text style={styles.infoValue}>{driver.name}</Text>
-          
-          <Text style={styles.infoLabel}>Phone</Text>
-          <Text style={styles.infoValue}>{driver.phone}</Text>
-          
-          <Text style={styles.infoLabel}>Email</Text>
-          <Text style={styles.infoValue}>{driver.email}</Text>
-          
-          <Text style={styles.infoLabel}>Experience</Text>
-          <Text style={styles.infoValue}>{driver.experience} years</Text>
-          
-          <Text style={styles.infoLabel}>Rating</Text>
-          <Text style={styles.infoValue}>{driver.rating.toFixed(1)}</Text>
-          
-          <Text style={styles.infoLabel}>Total Trips</Text>
-          <Text style={styles.infoValue}>{driver.totalTrips}</Text>
+      {/* Current Trip Card */}
+      {currentTrip && (
+        <TouchableOpacity 
+          onPress={() => router.push(`/trip/${currentTrip.id}`)}
+          activeOpacity={0.7}
+        >
+          <Card style={styles.tripCard} elevation="medium">
+            <Text style={styles.cardTitle}>Current Trip</Text>
+            <View style={styles.tripDetails}>
+              <View style={styles.addressContainer}>
+                <Text style={styles.addressLabel}>Pickup</Text>
+                <Text style={styles.addressText} numberOfLines={1}>
+                  {currentTrip.pickup.address}
+                </Text>
+              </View>
+              <View style={styles.addressContainer}>
+                <Text style={styles.addressLabel}>Dropoff</Text>
+                <Text style={styles.addressText} numberOfLines={1}>
+                  {currentTrip.dropoff.address}
+                </Text>
+              </View>
+              <View style={styles.tripStats}>
+                <View style={styles.stat}>
+                  <Text style={styles.statValue}>{currentTrip.distance} km</Text>
+                  <Text style={styles.statLabel}>Distance</Text>
+                </View>
+                <View style={styles.stat}>
+                  <Text style={styles.statValue}>${currentTrip.fare.toFixed(2)}</Text>
+                  <Text style={styles.statLabel}>Fare</Text>
+                </View>
+                <View style={styles.stat}>
+                  <Text style={styles.statValue}>{currentTrip.status}</Text>
+                  <Text style={styles.statLabel}>Status</Text>
+                </View>
+              </View>
+            </View>
+            <Button
+              title="View Trip Details"
+              variant="primary"
+              size="small"
+              onPress={() => router.push(`/trip/${currentTrip.id}`)}
+              style={styles.viewButton}
+            />
+          </Card>
+        </TouchableOpacity>
+      )}
+
+      {/* Driver Stats Card */}
+      <Card style={styles.statsCard} elevation="medium">
+        <Text style={styles.cardTitle}>Your Stats</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{driver?.totalTrips || 0}</Text>
+            <Text style={styles.statTitle}>Total Trips</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{driver?.rating?.toFixed(1) || '0.0'}</Text>
+            <Text style={styles.statTitle}>Rating</Text>
+          </View>
+          <View style={styles.statBox}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(driver?.status || '') }]}>
+              <Text style={styles.statusText}>{driver?.status || 'unknown'}</Text>
+            </View>
+            <Text style={styles.statTitle}>Status</Text>
+          </View>
         </View>
       </Card>
 
-      <Button
-        title="Edit Profile"
-        onPress={() => router.push('/edit-profile')}
-        style={styles.button}
-      />
-    </View>
+      {/* Quick Actions */}
+      <View style={styles.actionsContainer}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/(tabs)/trips')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: COLORS.primary }]}>
+              <Text style={styles.actionIconText}>🚖</Text>
+            </View>
+            <Text style={styles.actionText}>My Trips</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/(tabs)/earnings')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: COLORS.success }]}>
+              <Text style={styles.actionIconText}>💰</Text>
+            </View>
+            <Text style={styles.actionText}>Earnings</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => router.push('/(tabs)/profile')}
+          >
+            <View style={[styles.actionIcon, { backgroundColor: COLORS.secondary }]}>
+              <Text style={styles.actionIconText}>👤</Text>
+            </View>
+            <Text style={styles.actionText}>Profile</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Help Button */}
+      <TouchableOpacity
+        style={styles.helpButton}
+        onPress={() => router.push('/help')}
+      >
+        <Text style={styles.helpButtonText}>Need Help?</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
@@ -191,62 +244,177 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    padding: SPACING.md,
   },
-  card: {
-    marginBottom: SPACING.md,
+  contentContainer: {
+    padding: SPACING.lg,
+    paddingBottom: SPACING.xxl,
   },
-  title: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: FONTS.medium,
+    color: COLORS.textSecondary,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.xl,
+  },
+  welcomeText: {
+    fontSize: FONT_SIZES.xl,
+    fontFamily: FONTS.bold,
+    color: COLORS.text,
+  },
+  availabilityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  availabilityLabel: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
+    color: COLORS.textSecondary,
+    marginRight: SPACING.sm,
+  },
+  tripCard: {
+    marginBottom: SPACING.lg,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
+  },
+  cardTitle: {
     fontSize: FONT_SIZES.lg,
     fontFamily: FONTS.bold,
     color: COLORS.text,
     marginBottom: SPACING.md,
   },
-  subtitle: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
-    color: COLORS.textSecondary,
+  tripDetails: {
     marginBottom: SPACING.md,
   },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusText: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.medium,
-  },
-  availabilityContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  availabilityText: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
-    color: COLORS.text,
-  },
-  infoContainer: {
-    gap: SPACING.sm,
-  },
-  infoLabel: {
-    fontSize: FONT_SIZES.sm,
-    fontFamily: FONTS.medium,
-    color: COLORS.textSecondary,
-  },
-  infoValue: {
-    fontSize: FONT_SIZES.md,
-    fontFamily: FONTS.regular,
-    color: COLORS.text,
+  addressContainer: {
     marginBottom: SPACING.sm,
   },
-  button: {
-    marginTop: SPACING.md,
+  addressLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.medium,
+    color: COLORS.textSecondary,
+    marginBottom: 2,
   },
-  loadingText: {
+  addressText: {
     fontSize: FONT_SIZES.md,
     fontFamily: FONTS.regular,
     color: COLORS.text,
+  },
+  tripStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    paddingTop: SPACING.sm,
+  },
+  stat: {
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.bold,
+    color: COLORS.text,
+  },
+  statLabel: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.regular,
+    color: COLORS.textSecondary,
+  },
+  viewButton: {
+    alignSelf: 'flex-end',
+  },
+  statsCard: {
+    marginBottom: SPACING.lg,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    padding: SPACING.md,
+  },
+  statNumber: {
+    fontSize: FONT_SIZES.xxl,
+    fontFamily: FONTS.bold,
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  statTitle: {
+    fontSize: FONT_SIZES.xs,
+    fontFamily: FONTS.regular,
+    color: COLORS.textSecondary,
     textAlign: 'center',
+  },
+  statusBadge: {
+    paddingVertical: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: SPACING.md,
+    marginBottom: SPACING.xs,
+  },
+  statusText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
+    color: COLORS.surface,
+    textTransform: 'capitalize',
+  },
+  actionsContainer: {
+    marginBottom: SPACING.xl,
+  },
+  sectionTitle: {
+    fontSize: FONT_SIZES.lg,
+    fontFamily: FONTS.bold,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionButton: {
+    alignItems: 'center',
+    width: '30%',
+  },
+  actionIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+    ...SHADOWS.medium,
+  },
+  actionIconText: {
+    fontSize: 24,
+  },
+  actionText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  helpButton: {
+    backgroundColor: COLORS.surface,
+    padding: SPACING.md,
+    borderRadius: SPACING.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  helpButtonText: {
+    fontSize: FONT_SIZES.md,
+    fontFamily: FONTS.medium,
+    color: COLORS.primary,
   },
 }); 

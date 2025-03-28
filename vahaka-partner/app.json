@@ -1,0 +1,65 @@
+{
+  "expo": {
+    "name": "Vahaka Partner",
+    "slug": "vahaka-partner",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#2563EB",
+    "userInterfaceStyle": "light",
+    "scheme": "vahaka-partner",
+    "sdkVersion": "52.0.0",
+    "description": "Driver partner app for Vahaka transportation platform",
+    "privacy": "unlisted",
+    "platforms": ["ios", "android"],
+    "androidStatusBar": {
+      "backgroundColor": "#2563EB",
+      "translucent": false,
+      "barStyle": "light-content"
+    },
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#2563EB"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/your-project-id"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vahaka.partner"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2563EB"
+      },
+      "package": "com.vahaka.partner",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "statusBar": {
+        "backgroundColor": "#2563EB",
+        "translucent": false,
+        "barStyle": "light-content"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
+  }
+}

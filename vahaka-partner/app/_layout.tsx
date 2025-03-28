@@ -1,55 +1,58 @@
-import { Tabs } from 'expo-router';
-import { useColorScheme } from 'react-native';
-import { COLORS } from './constants/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import { Slot, Stack, useRouter, useSegments } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import { User } from 'firebase/auth';
+import { authService } from '../services';
+import { COLORS } from '../constants/theme';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
+export default function RootLayout() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    const unsubscribe = authService.onAuthStateChange((user) => {
+      setUser(user);
+      setIsLoading(false);
+      SplashScreen.hideAsync();
+    });
+
+    // Cleanup subscription
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === 'auth';
+    
+    if (!user && !inAuthGroup) {
+      // Redirect to auth flow if not logged in
+      router.replace('/auth/login');
+    } else if (user && inAuthGroup) {
+      // Redirect to main app if logged in
+      router.replace('/(tabs)');
+    }
+  }, [user, segments, isLoading]);
+
+  // While loading, don't render anything
+  if (isLoading) {
+    return null;
+  }
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textSecondary,
-        tabBarStyle: {
-          backgroundColor: colorScheme === 'dark' ? COLORS.background : COLORS.surface,
-          borderTopColor: COLORS.border,
-        },
-        headerStyle: {
-          backgroundColor: colorScheme === 'dark' ? COLORS.background : COLORS.surface,
-        },
-        headerTintColor: COLORS.text,
-        headerTitleStyle: {
-          fontFamily: 'Inter-Bold',
-        },
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="create-profile"
-        options={{
-          title: 'Create Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-add-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="edit-profile"
-        options={{
-          title: 'Edit Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="create-outline" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+    <>
+      <StatusBar style="auto" />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="auth" options={{ headerShown: false }} />
+        <Stack.Screen name="trip/[id]" options={{ presentation: 'modal' }} />
+      </Stack>
+    </>
   );
 } 
