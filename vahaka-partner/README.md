@@ -42,11 +42,11 @@ A mobile application for driver partners of the Vahaka transportation platform. 
 
 3. Environment Variables:
    - The app uses Firebase configuration from environment variables
-   - A `.env.example` file is provided with sample values for development
-   - For your own deployment, create a `.env` file by copying `.env.example` and updating values:
+   - Run the environment setup script to create a `.env` file:
    ```
-   cp .env.example .env
+   npm run setup-env
    ```
+   - This script creates a `.env` file based on `.env.example` with placeholder values
    - Update the values in the `.env` file with your Firebase project details:
    ```
    FIREBASE_API_KEY=your-api-key
@@ -55,9 +55,10 @@ A mobile application for driver partners of the Vahaka transportation platform. 
    FIREBASE_STORAGE_BUCKET=your-storage-bucket
    FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
    FIREBASE_APP_ID=your-app-id
+   FIREBASE_MEASUREMENT_ID=your-measurement-id
    ```
    
-   > **Note:** The example values in `.env.example` are safe to use for development and testing. For production, you should replace them with your own Firebase project configuration.
+   > **Note:** Never commit your `.env` file to version control. The `.env.example` file with placeholder values is safe to commit.
 
 4. Start the development server:
    ```
@@ -157,4 +158,26 @@ This project is licensed under the MIT License.
 
 ## Contact
 
-For any queries, please reach out to [your-email@example.com](mailto:your-email@example.com). 
+For any queries, please reach out to [your-email@example.com](mailto:your-email@example.com).
+
+## Environment Variables
+
+The app loads environment variables from two sources:
+
+1. The `.env` file in the root directory (for local development)
+2. Expo's app.json `extra` field (for production builds)
+
+To check if your environment variables are correctly loaded:
+
+```javascript
+import { ENV, validateEnv } from './services/env';
+
+// Check if environment is valid
+const isValid = validateEnv();
+console.log("Environment valid:", isValid);
+
+// Access environment variables
+console.log("Firebase Project ID:", ENV.FIREBASE_PROJECT_ID);
+```
+
+When building for production, ensure your environment variables are properly set in your CI/CD pipeline. 
