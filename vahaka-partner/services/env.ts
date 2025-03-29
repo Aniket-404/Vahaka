@@ -10,37 +10,28 @@ interface EnvironmentVariables {
   API_URL: string;
 }
 
-// Environment variable getter with fallback to .env.example values
-const getEnvVariable = (key: string): string | null => {
-  // First try to get from process.env (React Native / Expo)
-  const envValue = process.env[key];
-  if (envValue) return envValue;
-  
-  // Fallback values from .env.example (for GitHub and development)
-  const fallbackValues: Record<string, string> = {
-    FIREBASE_API_KEY: "AIzaSyD3tGW_fK2ftokDXzc2q1MoCmqE3YwzWxw",
-    FIREBASE_AUTH_DOMAIN: "vahaka-partner.firebaseapp.com",
-    FIREBASE_PROJECT_ID: "vahaka-partner",
-    FIREBASE_STORAGE_BUCKET: "vahaka-partner.appspot.com",
-    FIREBASE_MESSAGING_SENDER_ID: "403161680709",
-    FIREBASE_APP_ID: "1:403161680709:web:d2f12ccd57ea8ba91f8c2c",
-    FIREBASE_MEASUREMENT_ID: "G-36YZYCTBQP",
-    EXPO_PUBLIC_API_URL: "https://api.example.com"
-  };
-  
-  return fallbackValues[key] || null;
-};
+// Import environment variables directly using react-native-dotenv
+import {
+  FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN,
+  FIREBASE_PROJECT_ID,
+  FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID,
+  FIREBASE_MEASUREMENT_ID,
+  EXPO_PUBLIC_API_URL
+} from '@env';
 
 // Export environment variables
 export const ENV: EnvironmentVariables = {
-  FIREBASE_API_KEY: getEnvVariable("FIREBASE_API_KEY") || "",
-  FIREBASE_AUTH_DOMAIN: getEnvVariable("FIREBASE_AUTH_DOMAIN") || "",
-  FIREBASE_PROJECT_ID: getEnvVariable("FIREBASE_PROJECT_ID") || "",
-  FIREBASE_STORAGE_BUCKET: getEnvVariable("FIREBASE_STORAGE_BUCKET") || "",
-  FIREBASE_MESSAGING_SENDER_ID: getEnvVariable("FIREBASE_MESSAGING_SENDER_ID") || "",
-  FIREBASE_APP_ID: getEnvVariable("FIREBASE_APP_ID") || "",
-  FIREBASE_MEASUREMENT_ID: getEnvVariable("FIREBASE_MEASUREMENT_ID") || "",
-  API_URL: getEnvVariable("EXPO_PUBLIC_API_URL") || ""
+  FIREBASE_API_KEY: FIREBASE_API_KEY || "",
+  FIREBASE_AUTH_DOMAIN: FIREBASE_AUTH_DOMAIN || "",
+  FIREBASE_PROJECT_ID: FIREBASE_PROJECT_ID || "",
+  FIREBASE_STORAGE_BUCKET: FIREBASE_STORAGE_BUCKET || "",
+  FIREBASE_MESSAGING_SENDER_ID: FIREBASE_MESSAGING_SENDER_ID || "",
+  FIREBASE_APP_ID: FIREBASE_APP_ID || "",
+  FIREBASE_MEASUREMENT_ID: FIREBASE_MEASUREMENT_ID || "",
+  API_URL: EXPO_PUBLIC_API_URL || ""
 };
 
 // Export a function to check if all required env variables are set
@@ -57,8 +48,10 @@ export const validateEnv = (): boolean => {
   
   if (missingVars.length > 0) {
     console.warn(`Missing required environment variables: ${missingVars.join(", ")}`);
+    console.warn("Please ensure you have created a .env file based on .env.example");
     return false;
   }
   
+  console.log("Environment variables loaded successfully");
   return true;
 }; 
