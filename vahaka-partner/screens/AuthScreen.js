@@ -9,16 +9,18 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  ScrollView
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { auth } from '../services/firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { db } from '../services/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 export default function AuthScreen({ navigation }) {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -35,11 +37,11 @@ export default function AuthScreen({ navigation }) {
   };
 
   const validateForm = () => {
-    if (!formData.email || !formData.password) {
+    if (!formData.email || (!isForgotPassword && !formData.password)) {
       Alert.alert('Error', 'Email and password are required');
       return false;
     }
-    if (!isLogin && (!formData.phone || !formData.name)) {
+    if (!isForgotPassword && !isLogin && (!formData.phone || !formData.name)) {
       Alert.alert('Error', 'All fields are required for signup');
       return false;
     }
@@ -51,6 +53,17 @@ export default function AuthScreen({ navigation }) {
 
     try {
       setLoading(true);
+
+      if (isForgotPassword) {
+        // Password Reset
+        await sendPasswordResetEmail(auth, formData.email);
+        Alert.alert(
+          'Password Reset Email Sent',
+          'Check your email for instructions to reset your password.',
+          [{ text: 'OK', onPress: () => setIsForgotPassword(false) }]
+        );
+        return;
+      }
 
       if (isLogin) {
         // Login
@@ -96,7 +109,7 @@ export default function AuthScreen({ navigation }) {
       }
 
       // Navigate to profile screen
-      navigation.replace('Profile');
+      navigation.navigateToHome();
     } catch (error) {
       console.error('Auth error:', error);
       let errorMessage = 'An error occurred. Please try again.';
@@ -130,95 +143,162 @@ export default function AuthScreen({ navigation }) {
     }
   };
 
+  const renderForgotPasswordScreen = () => {
+    return (
+      <View style={styles.form}>
+        <Text style={styles.forgotPasswordDescription}>
+          Enter your email address below and we&apos;ll send you instructions to reset your password.
+        </Text>
+        
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Email Address</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            value={formData.email}
+            onChangeText={(value) => handleInputChange('email', value)}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <TouchableOpacity 
+          style={[styles.button, styles.resetButton, loading && styles.buttonDisabled]}
+          onPress={handleAuth}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.buttonText}>Reset Password</Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => setIsForgotPassword(false)}
+          hitSlop={{top: 15, bottom: 15, left: 15, right: 15}}
+        >
+          <FontAwesome5 name="arrow-left" size={14} color="#2563EB" style={styles.backIcon} />
+          <Text style={styles.backText}>Back to Login</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderLoginForm = () => {
+    return (
+      <View style={styles.form}>
+        {!isLogin && (
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Full Name</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your full name"
+              value={formData.name}
+              onChangeText={(value) => handleInputChange('name', value)}
+              autoCapitalize="words"
+            />
+          </View>
+        )}
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Email Address</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your email"
+            value={formData.email}
+            onChangeText={(value) => handleInputChange('email', value)}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        {!isLogin && (
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Phone Number</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your phone number"
+              value={formData.phone}
+              onChangeText={(value) => handleInputChange('phone', value)}
+              keyboardType="phone-pad"
+            />
+          </View>
+        )}
+
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Password</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter your password"
+            value={formData.password}
+            onChangeText={(value) => handleInputChange('password', value)}
+            secureTextEntry
+          />
+        </View>
+
+        {isLogin && (
+          <View style={styles.forgotPasswordContainer}>
+            <TouchableOpacity 
+              style={styles.forgotLink}
+              onPress={() => setIsForgotPassword(true)}
+              hitSlop={{top: 15, bottom: 15, left: 15, right: 15}}
+            >
+              <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <TouchableOpacity 
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleAuth}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {isLogin ? 'Login' : 'Sign Up'}
+            </Text>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.switchButton}
+          onPress={() => setIsLogin(!isLogin)}
+        >
+          <Text style={styles.switchButtonText}>
+            {isLogin 
+              ? "Don't have an account? Sign Up" 
+              : "Already have an account? Login"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
-        <View style={styles.header}>
-          <FontAwesome5 name="car" size={40} color="#2563EB" />
-          <Text style={styles.title}>Vahaka Partner</Text>
-          <Text style={styles.subtitle}>
-            {isLogin ? 'Welcome back!' : 'Create your account'}
-          </Text>
-        </View>
-
-        <View style={styles.form}>
-          {!isLogin && (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Full Name</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your full name"
-                value={formData.name}
-                onChangeText={(value) => handleInputChange('name', value)}
-                autoCapitalize="words"
-              />
-            </View>
-          )}
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your email"
-              value={formData.email}
-              onChangeText={(value) => handleInputChange('email', value)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          {!isLogin && (
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your phone number"
-                value={formData.phone}
-                onChangeText={(value) => handleInputChange('phone', value)}
-                keyboardType="phone-pad"
-              />
-            </View>
-          )}
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter your password"
-              value={formData.password}
-              onChangeText={(value) => handleInputChange('password', value)}
-              secureTextEntry
-            />
-          </View>
-
-          <TouchableOpacity 
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleAuth}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.buttonText}>
-                {isLogin ? 'Login' : 'Sign Up'}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.switchButton}
-            onPress={() => setIsLogin(!isLogin)}
-          >
-            <Text style={styles.switchButtonText}>
-              {isLogin 
-                ? "Don't have an account? Sign Up" 
-                : "Already have an account? Login"}
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <FontAwesome5 name="car" size={40} color="#2563EB" />
+            <Text style={styles.title}>Vahaka Partner</Text>
+            <Text style={styles.subtitle}>
+              {isForgotPassword ? 'Reset Your Password' : 
+                isLogin ? 'Welcome back!' : 'Create your account'}
             </Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+
+          {isForgotPassword ? renderForgotPasswordScreen() : renderLoginForm()}
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -231,6 +311,10 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
@@ -249,35 +333,36 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   form: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
   },
   inputContainer: {
     marginBottom: 20,
   },
   label: {
     fontSize: 14,
+    color: '#475569',
+    marginBottom: 6,
     fontWeight: '500',
-    color: '#64748B',
-    marginBottom: 8,
   },
   input: {
     backgroundColor: 'white',
-    borderRadius: 8,
-    padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
-    color: '#0F172A',
   },
   button: {
     backgroundColor: '#2563EB',
+    paddingVertical: 14,
     borderRadius: 8,
-    padding: 16,
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    marginTop: 10,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    backgroundColor: '#64748B',
   },
   buttonText: {
     color: 'white',
@@ -285,11 +370,59 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   switchButton: {
-    marginTop: 16,
+    marginTop: 24,
     alignItems: 'center',
   },
   switchButtonText: {
     color: '#2563EB',
     fontSize: 14,
+    fontWeight: '500',
+  },
+  textLink: {
+    alignSelf: 'center',
+    marginVertical: 15,
+  },
+  textLinkContent: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  resetButton: {
+    marginTop: 24,
+    marginBottom: 24,
+  },
+  forgotPasswordDescription: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 24,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginBottom: 10,
+    marginTop: -5,
+  },
+  forgotLink: {
+    padding: 2,
+  },
+  forgotText: {
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20,
+  },
+  backIcon: {
+    marginRight: 8,
+  },
+  backText: {
+    color: '#2563EB',
+    fontSize: 14,
+    fontWeight: '500',
   },
 }); 

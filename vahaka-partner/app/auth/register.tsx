@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Alert, 
+  Image, 
+  Platform
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { COLORS, FONTS, FONT_SIZES, SPACING } from '../../constants/theme';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { authService } from '../../services';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -72,100 +81,107 @@ export default function RegisterScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <KeyboardAwareScrollView
+      style={{ flex: 1, backgroundColor: COLORS.background }}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      enableOnAndroid={true}
+      enableAutomaticScroll={true}
+      extraScrollHeight={Platform.OS === 'ios' ? 100 : 140}
+      extraHeight={120}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.appName}>Vahaka Partner</Text>
-        </View>
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.appName}>Vahaka Partner</Text>
+      </View>
+      
+      <View style={styles.formContainer}>
+        <Text style={styles.title}>Driver Registration</Text>
+        <Text style={styles.subtitle}>Create your account to get started</Text>
         
-        <View style={styles.formContainer}>
-          <Text style={styles.title}>Driver Registration</Text>
-          <Text style={styles.subtitle}>Create your account to get started</Text>
-          
-          <Input
-            label="Full Name"
-            placeholder="Enter your full name"
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="words"
-            error={errors.name}
-          />
-          
-          <Input
-            label="Phone Number"
-            placeholder="Enter your phone number"
-            value={phone}
-            onChangeText={setPhone}
-            keyboardType="phone-pad"
-            error={errors.phone}
-          />
-          
-          <Input
-            label="Email"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            error={errors.email}
-          />
-          
-          <Input
-            label="Password"
-            placeholder="Create a password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            error={errors.password}
-          />
-          
-          <Input
-            label="Confirm Password"
-            placeholder="Confirm your password"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            error={errors.confirmPassword}
-          />
-          
-          <Button
-            title="Register"
-            onPress={handleRegister}
-            loading={loading}
-            style={styles.button}
-            fullWidth
-          />
-          
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/auth/login')}>
-              <Text style={styles.footerLink}>Login</Text>
-            </TouchableOpacity>
-          </View>
+        <Input
+          label="Full Name"
+          placeholder="Enter your full name"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
+          error={errors.name}
+        />
+        
+        <Input
+          label="Phone Number"
+          placeholder="Enter your phone number"
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          error={errors.phone}
+        />
+        
+        <Input
+          label="Email"
+          placeholder="Enter your email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          error={errors.email}
+        />
+        
+        <Input
+          label="Password"
+          placeholder="Create a password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          error={errors.password}
+        />
+        
+        <Input
+          label="Confirm Password"
+          placeholder="Confirm your password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+          error={errors.confirmPassword}
+        />
+        
+        <Button
+          title="Register"
+          onPress={handleRegister}
+          loading={loading}
+          style={styles.button}
+          fullWidth
+        />
+        
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account? </Text>
+          <TouchableOpacity 
+            onPress={() => router.push('/auth/login')}
+            hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}
+          >
+            <Text style={styles.footerLink}>Login</Text>
+          </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: COLORS.background,
     padding: SPACING.lg,
+    paddingBottom: SPACING.xxl * 2,
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: SPACING.xxl,
-    marginBottom: SPACING.xl,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.lg,
   },
   logo: {
     width: 80,
@@ -186,7 +202,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
-    marginBottom: SPACING.xxl,
+    marginBottom: SPACING.lg,
   },
   title: {
     fontSize: FONT_SIZES.xl,
@@ -207,6 +223,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: SPACING.xl,
+    paddingVertical: SPACING.sm,
   },
   footerText: {
     fontSize: FONT_SIZES.sm,

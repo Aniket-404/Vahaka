@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Alert, 
+  Image, 
+  Platform
+} from 'react-native';
+import { useRouter, Link } from 'expo-router';
 import { COLORS, FONTS, FONT_SIZES, SPACING } from '../../constants/theme';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { authService } from '../../services';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -44,80 +53,108 @@ export default function LoginScreen() {
     }
   };
 
+  const handleForgotPassword = () => {
+    console.log('Navigating to forgot password screen');
+    router.push('/auth/forgot-password');
+  };
+
+  const handleRegister = () => {
+    console.log('Navigating to register screen');
+    router.push('/auth/register');
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <KeyboardAwareScrollView
+      style={{ flex: 1, backgroundColor: COLORS.background }}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      enableOnAndroid={true}
+      enableAutomaticScroll={true}
+      extraScrollHeight={Platform.OS === 'ios' ? 100 : 140}
+      extraHeight={120}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.logoContainer}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Text style={styles.appName}>Vahaka Partner</Text>
-        </View>
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.appName}>Vahaka Partner</Text>
+      </View>
+      
+      <View style={styles.formContainer}>
+        <Text style={styles.title}>Driver Login</Text>
+        <Text style={styles.subtitle}>Enter your credentials to continue</Text>
         
-        <View style={styles.formContainer}>
-          <Text style={styles.title}>Driver Login</Text>
-          <Text style={styles.subtitle}>Enter your credentials to continue</Text>
-          
-          <Input
-            label="Email"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            error={errors.email}
-          />
-          
-          <Input
-            label="Password"
-            placeholder="Enter your password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            error={errors.password}
-          />
-          
+        <Input
+          label="Email"
+          placeholder="Enter your email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          error={errors.email}
+        />
+        
+        <Input
+          label="Password"
+          placeholder="Enter your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          error={errors.password}
+        />
+        
+        <View style={styles.forgotPasswordWrapper}>
           <TouchableOpacity
-            onPress={() => router.push('/auth/forgot-password')}
+            onPress={handleForgotPassword}
             style={styles.forgotPasswordContainer}
+            hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}
+            activeOpacity={0.6}
           >
             <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
           </TouchableOpacity>
-          
-          <Button
-            title="Login"
-            onPress={handleLogin}
-            loading={loading}
-            style={styles.button}
-            fullWidth
-          />
-          
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push('/auth/register')}>
-              <Text style={styles.footerLink}>Register</Text>
-            </TouchableOpacity>
-          </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        
+        <Button
+          title="Login"
+          onPress={handleLogin}
+          loading={loading}
+          style={styles.button}
+          fullWidth
+        />
+        
+        <Link href="/auth/forgot-password" style={styles.directLink} asChild>
+          <TouchableOpacity style={styles.directLinkContainer}>
+            <Text style={styles.directLinkText}>Reset Password (Alternative)</Text>
+          </TouchableOpacity>
+        </Link>
+        
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account? </Text>
+          <TouchableOpacity 
+            onPress={handleRegister}
+            hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}
+            activeOpacity={0.6}
+          >
+            <Text style={styles.footerLink}>Register</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: COLORS.background,
     padding: SPACING.lg,
+    paddingBottom: SPACING.xxl * 2,
   },
   logoContainer: {
     alignItems: 'center',
-    marginTop: SPACING.xxl * 1.5,
+    marginTop: SPACING.xxl,
     marginBottom: SPACING.xxl,
   },
   logo: {
@@ -152,9 +189,16 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginBottom: SPACING.lg,
   },
-  forgotPasswordContainer: {
-    alignSelf: 'flex-end',
+  forgotPasswordWrapper: {
+    width: '100%',
+    alignItems: 'flex-end',
     marginBottom: SPACING.xl,
+    marginTop: SPACING.md,
+  },
+  forgotPasswordContainer: {
+    padding: SPACING.md,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    borderRadius: 6,
   },
   forgotPasswordText: {
     fontSize: FONT_SIZES.sm,
@@ -164,10 +208,26 @@ const styles = StyleSheet.create({
   button: {
     marginVertical: SPACING.md,
   },
+  directLink: {
+    marginVertical: SPACING.md,
+  },
+  directLinkContainer: {
+    alignItems: 'center',
+    padding: SPACING.md,
+    backgroundColor: COLORS.success + '20',
+    borderRadius: 6,
+    marginTop: SPACING.md,
+  },
+  directLinkText: {
+    fontSize: FONT_SIZES.sm,
+    fontFamily: FONTS.medium,
+    color: COLORS.success,
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: SPACING.xl,
+    paddingVertical: SPACING.sm,
   },
   footerText: {
     fontSize: FONT_SIZES.sm,

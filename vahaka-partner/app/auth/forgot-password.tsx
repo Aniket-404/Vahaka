@@ -1,19 +1,37 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Platform
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { COLORS, FONTS, FONT_SIZES, SPACING } from '../../constants/theme';
 import { Input } from '../../components/Input';
 import { Button } from '../../components/Button';
 import { authService } from '../../services';
+import { Ionicons } from '@expo/vector-icons';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [isReset, setIsReset] = useState(false);
   
   const router = useRouter();
-
+  
+  // Add debug log to verify screen rendering
+  useEffect(() => {
+    console.log('ForgotPasswordScreen rendered');
+    
+    return () => {
+      console.log('ForgotPasswordScreen unmounted');
+    };
+  }, []);
+  
   const validateEmail = () => {
     if (!email) {
       setError('Email is required');
@@ -22,8 +40,7 @@ export default function ForgotPasswordScreen() {
       setError('Email is invalid');
       return false;
     }
-    
-    setError(null);
+    setError('');
     return true;
   };
 
@@ -33,7 +50,7 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
     try {
       await authService.resetPassword(email);
-      setIsSubmitted(true);
+      setIsReset(true);
     } catch (error: any) {
       Alert.alert(
         'Reset Failed',
@@ -44,71 +61,83 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  const handleBackToLogin = () => {
+    console.log('Navigating back to login');
+    router.push('/auth/login');
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <KeyboardAwareScrollView
+      style={{ flex: 1, backgroundColor: COLORS.background }}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+      enableOnAndroid={true}
+      enableAutomaticScroll={true}
+      extraScrollHeight={Platform.OS === 'ios' ? 100 : 140}
+      extraHeight={120}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.content}>
-          {isSubmitted ? (
-            <View style={styles.successContainer}>
-              <Text style={styles.title}>Check Your Email</Text>
-              <Text style={styles.message}>
-                We've sent a password reset link to {email}. Please check your inbox and follow the instructions to reset your password.
-              </Text>
-              <Button
-                title="Back to Login"
-                onPress={() => router.push('/auth/login')}
-                style={styles.button}
-                fullWidth
-              />
-            </View>
-          ) : (
-            <View style={styles.formContainer}>
-              <Text style={styles.title}>Forgot Password</Text>
-              <Text style={styles.subtitle}>
-                Enter your email address and we'll send you a link to reset your password.
-              </Text>
-              
-              <Input
-                label="Email"
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                error={error || undefined}
-              />
-              
-              <Button
-                title="Reset Password"
-                onPress={handleResetPassword}
-                loading={loading}
-                style={styles.button}
-                fullWidth
-              />
-              
-              <TouchableOpacity
-                onPress={() => router.push('/auth/login')}
-                style={styles.backButton}
-              >
-                <Text style={styles.backButtonText}>← Back to Login</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      <View style={styles.content}>
+        {isReset ? (
+          <View style={styles.successContainer}>
+            <Ionicons name="checkmark-circle" size={64} color={COLORS.success} style={{ marginBottom: SPACING.lg }} />
+            <Text style={styles.title}>Email Sent!</Text>
+            <Text style={styles.message}>
+              We've sent a password reset link to {email}. Please check your inbox and follow the instructions to reset your password.
+            </Text>
+            <Button
+              title="Back to Login"
+              onPress={handleBackToLogin}
+              style={styles.button}
+              fullWidth
+            />
+          </View>
+        ) : (
+          <View style={styles.formContainer}>
+            <Text style={styles.title}>Forgot Password</Text>
+            <Text style={styles.subtitle}>
+              Enter your email address and we'll send you a link to reset your password.
+            </Text>
+
+            <Input
+              label="Email"
+              placeholder="Enter your email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              error={error || undefined}
+            />
+
+            <Button
+              title="Reset Password"
+              onPress={handleResetPassword}
+              loading={loading}
+              style={styles.button}
+              fullWidth
+            />
+
+            <TouchableOpacity
+              onPress={handleBackToLogin}
+              style={styles.backButton}
+              hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}
+              activeOpacity={0.6}
+            >
+              <Text style={styles.backButtonText}>← Back to Login</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </KeyboardAwareScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
-    backgroundColor: COLORS.background,
     padding: SPACING.lg,
     justifyContent: 'center',
+    paddingBottom: SPACING.xxl,
   },
   content: {
     maxWidth: 400,
@@ -164,6 +193,9 @@ const styles = StyleSheet.create({
   backButton: {
     marginTop: SPACING.xl,
     alignSelf: 'center',
+    padding: SPACING.md,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    borderRadius: 8,
   },
   backButtonText: {
     fontSize: FONT_SIZES.sm,
