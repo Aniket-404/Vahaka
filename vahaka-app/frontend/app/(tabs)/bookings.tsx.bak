@@ -1,0 +1,514 @@
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, RefreshControl, Platform, StatusBar } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter, useFocusEffect } from 'expo-router';
+import ThemedText from '@/components/ThemedText';
+import ThemedView from '@/components/ThemedView';
+import { useAuth } from '../context/auth';
+import { getUserBookings } from '../services/userService';
+import { Booking } from '../types/user';
+
+export default function BookingsScreen() {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  const { user } = useAuth();
+  const router = useRouter();
+  
+  const fetchBookings = async () => {
+    try {
+      setError(null);
+      const userBookings = await getUserBookings();
+      setBookings(userBookings);
+    } catch (error: any) {
+      console.error('Error fetching bookings:', error);
+      setError(error.message || 'Failed to load bookings');
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  };
+  
+  // Use this hook to refetch data every time the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('Bookings screen is focused, fetching data...');
+      fetchBookings();
+      return () => {
+        // Clean up if needed
+      };
+    }, [user])
+  );
+  
+  // Keep the existing useEffect for initial loading
+  useEffect(() => {
+    fetchBookings();
+  }, [user]);
+  
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchBookings();
+  };
+  
+  const getStatusColor = (status: string): { background: string; text: string } => {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+        return { background: '#DCFCE7', text: '#16A34A' };
+      case 'cancelled':
+        return { background: '#FEE2E2', text: '#DC2626' };
+      case 'completed':
+        return { background: '#E0F2FE', text: '#0284C7' };
+      case 'pending':
+        return { background: '#FEF3C7', text: '#D97706' };
+      default:
+        return { background: '#F3F4F6', text: '#4B5563' };
+    }
+  };
+  
+  const getPaymentStatusColor = (status: string): { background: string; text: string } => {
+    switch (status.toLowerCase()) {
+      case 'paid':
+        return { background: '#DCFCE7', text: '#16A34A' };
+      case 'pending':
+        return { background: '#FEF3C7', text: '#D97706' };
+      case 'failed':
+        return { background: '#FEE2E2', text: '#DC2626' };
+      default:
+        return { background: '#F3F4F6', text: '#4B5563' };
+    }
+  };
+  
+  const renderBookingCard = ({ item }: { item: Booking }) => {
+    const statusStyle = getStatusColor(item.status);
+    const paymentStatusStyle = getPaymentStatusColor(item.paymentStatus);
+    
+    // Safely format dates
+    const formatDate = (dateInput: any) => {
+      try {
+        if (!dateInput) return 'Date not available';
+        
+        const date = new Date(dateInput);
+        if (isNaN(date.getTime())) return 'Invalid date';
+        
+        return date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric',
+          year: 'numeric'
+        });
+      } catch (e) {
+        console.error('Date formatting error:', e);
+        return 'Date error';
+      }
+    };
+    
+    const startDate = formatDate(item.startDate);
+    const endDate = formatDate(item.endDate);
+
+    const canCancel = item.status.toLowerCase() === 'pending' || item.status.toLowerCase() === 'confirmed';
+    
+    const handleCancelBooking = () => {
+      router.push(`/cancel-booking?id=${item.id}`);
+    };
+    
+    return (
+      <TouchableOpacity 
+        style={styles.bookingCard}
+        onPress={() => router.push(`/booking-details?id=${item.id}`)}
+        activeOpacity={0.9}
+      >
+        <View style={styles.bookingHeader}>
+          <View style={styles.driverInfo}>
+            {item.driverImage ? (
+              <View style={styles.driverImageContainer}>
+                <View style={styles.driverCircle}>
+                  <Ionicons name="person" size={20} color="#2563EB" />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.driverCircle}>
+                <Ionicons name="person" size={20} color="#2563EB" />
+              </View>
+            )}
+            <View style={styles.driverDetails}>
+              <ThemedText style={styles.driverName}>
+                {item.driverName || item.driverDetails?.name || 'Unknown Driver'}
+              </ThemedText>
+              <View style={styles.dateContainer}>
+                <Ionicons name="calendar-outline" size={14} color="#64748B" />
+                <ThemedText style={styles.dateText}>
+                  {startDate} - {endDate}
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+          
+          <View style={[styles.statusBadge, { backgroundColor: statusStyle.background }]}>
+            <ThemedText style={[styles.statusText, { color: statusStyle.text }]}>
+              {item.status}
+            </ThemedText>
+          </View>
+        </View>
+        
+        <View style={styles.divider} />
+        
+        <View style={styles.bookingDetails}>
+          <View style={styles.detailRow}>
+            <View style={styles.detailItem}>
+              <Ionicons name="location-outline" size={16} color="#64748B" />
+              <ThemedText style={styles.detailLabel}>Location</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.location || 'Not specified'}</ThemedText>
+            </View>
+            
+            <View style={styles.detailItem}>
+              <Ionicons name="car-outline" size={16} color="#64748B" />
+              <ThemedText style={styles.detailLabel}>Trip Type</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.tripType || 'Standard'}</ThemedText>
+            </View>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailItem}>
+              <Ionicons name="card-outline" size={16} color="#64748B" />
+              <ThemedText style={styles.detailLabel}>Payment</ThemedText>
+              <ThemedText style={styles.detailValue}>{item.paymentMethod || 'Not specified'}</ThemedText>
+            </View>
+            
+            <View style={styles.detailItem}>
+              <Ionicons name="cash-outline" size={16} color="#64748B" />
+              <ThemedText style={styles.detailLabel}>Amount</ThemedText>
+              <ThemedText style={styles.detailValue}>₹{item.totalAmount?.toFixed(2) || '0.00'}</ThemedText>
+            </View>
+          </View>
+        </View>
+        
+        <View style={styles.bookingFooter}>
+          <View style={styles.paymentStatusContainer}>
+            <View style={[styles.paymentStatusBadge, { backgroundColor: paymentStatusStyle.background }]}>
+              <Ionicons 
+                name={item.paymentStatus.toLowerCase() === 'paid' ? 'checkmark-circle-outline' : 'timer-outline'} 
+                size={14} 
+                color={paymentStatusStyle.text} 
+              />
+              <ThemedText style={[styles.paymentStatusText, { color: paymentStatusStyle.text }]}>
+                {item.paymentStatus}
+              </ThemedText>
+            </View>
+          </View>
+          
+          {canCancel && (
+            <TouchableOpacity 
+              style={styles.cancelButton}
+              onPress={handleCancelBooking}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="close-circle-outline" size={16} color="#DC2626" />
+              <ThemedText style={styles.cancelButtonText}>Cancel</ThemedText>
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+      
+      <LinearGradient
+        colors={['#2563EB', '#1D4ED8']}
+        style={styles.headerGradient}
+      >
+        <View style={styles.header}>
+          <ThemedText style={styles.headerTitle}>My Bookings</ThemedText>
+          <ThemedText style={styles.headerSubtitle}>Manage your driver bookings</ThemedText>
+        </View>
+      </LinearGradient>
+      
+      <View style={styles.contentContainer}>
+        {isLoading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563EB" />
+            <ThemedText style={styles.loadingText}>Loading bookings...</ThemedText>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={40} color="#EF4444" />
+            <ThemedText style={styles.errorText}>{error}</ThemedText>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchBookings}>
+              <ThemedText style={styles.retryButtonText}>Retry</ThemedText>
+            </TouchableOpacity>
+          </View>
+        ) : bookings.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="calendar-outline" size={60} color="#94A3B8" />
+            <ThemedText style={styles.emptyTitle}>No Bookings Found</ThemedText>
+            <ThemedText style={styles.emptySubtitle}>
+              You don't have any bookings yet. Start by booking a driver.
+            </ThemedText>
+            <TouchableOpacity 
+              style={styles.bookNowButton}
+              onPress={() => router.push('/(tabs)')}
+            >
+              <ThemedText style={styles.bookNowButtonText}>Book a Driver</ThemedText>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <FlatList
+            data={bookings}
+            renderItem={renderBookingCard}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.bookingsList}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={['#2563EB']}
+                tintColor="#2563EB"
+              />
+            }
+          />
+        )}
+      </View>
+    </ThemedView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerGradient: {
+    paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+  },
+  header: {
+    paddingTop: 20,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  contentContainer: {
+    flex: 1,
+    marginTop: -10,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor: '#F8FAFC',
+    overflow: 'hidden',
+  },
+  bookingsList: {
+    padding: 16,
+  },
+  bookingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  bookingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  driverInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  driverImageContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    overflow: 'hidden',
+  },
+  driverCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  driverImage: {
+    width: 40,
+    height: 40,
+  },
+  driverDetails: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  driverName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginLeft: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 12,
+  },
+  bookingDetails: {
+    marginBottom: 12,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  detailItem: {
+    flex: 1,
+    marginRight: 8,
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1E293B',
+  },
+  bookingFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  paymentStatusContainer: {
+    flex: 1,
+  },
+  paymentStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  paymentStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  cancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  cancelButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#DC2626',
+    marginLeft: 4,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748B',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 16,
+    marginBottom: 20,
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyTitle: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  emptySubtitle: {
+    marginTop: 8,
+    marginBottom: 24,
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    maxWidth: 300,
+  },
+  bookNowButton: {
+    backgroundColor: '#2563EB',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  bookNowButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+}); 
