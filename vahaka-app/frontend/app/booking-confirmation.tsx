@@ -1,253 +1,522 @@
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Platform, StatusBar, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useEffect } from 'react';
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import ThemedText from '@/components/ThemedText';
+import ThemedView from '@/components/ThemedView';
+import driverService from './services/driverService';
+import { createBooking } from './services/bookingService';
+import { useAuth } from './context/auth';
 
 export default function BookingConfirmationScreen() {
   const router = useRouter();
-  const { bookingId } = useLocalSearchParams();
-  const [loading, setLoading] = useState(true);
+  const { driverId, startDate, endDate } = useLocalSearchParams();
+  const { user } = useAuth();
   
-  // Mock booking details - in real app, this would come from API
-  const [booking, setBooking] = useState({
-    id: bookingId || '123456',
-    driverName: 'John Doe',
-    startDate: '2024-03-25',
-    endDate: '2024-03-27',
-    duration: 3,
-    totalAmount: 5100,
-    driverImage: 'https://randomuser.me/api/portraits/men/32.jpg',
-    tripType: 'Business',
-    status: 'Confirmed',
-    paymentMethod: 'VISA **** 4582'
-  });
+  const [driver, setDriver] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  
+  // Calculate dates and durations
+  const parsedStartDate = startDate ? new Date(String(startDate)) : new Date();
+  const parsedEndDate = endDate ? new Date(String(endDate)) : new Date();
+  
+  const tripDuration = Math.ceil(
+    (parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24)
+  ) + 1;
   
   useEffect(() => {
-    // Simulate API call
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+    const loadDriverData = async () => {
+      if (!driverId) {
+        setError('Driver ID is required');
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        const driverData = await driverService.getDriverById(String(driverId));
+        setDriver(driverData);
+      } catch (error) {
+        console.error('Error fetching driver details:', error);
+        setError('Failed to load driver details. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    return () => clearTimeout(timer);
-  }, []);
+    loadDriverData();
+  }, [driverId]);
   
-  const formatDate = (dateString) => {
-    const options = { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+  // Calculate price
+  const calculatePrices = () => {
+    if (!driver) return { driverRate: 0, allowance: 0, total: 0 };
+    
+    const driverRate = driver.price * tripDuration;
+    const allowance = 500 * tripDuration; // Daily allowance
+    const total = driverRate + allowance;
+    
+    return { driverRate, allowance, total };
   };
   
-  if (loading) {
+  const { driverRate, allowance, total } = calculatePrices();
+  
+  // Format date for display
+  const formatDate = (date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short'
+    });
+  };
+  
+  // Handle booking confirmation
+  const handleConfirmBooking = async () => {
+    if (!user) {
+      Alert.alert(
+        "Login Required", 
+        "Please login to confirm your booking.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Login", onPress: () => router.push("/auth/login") }
+        ]
+      );
+      return;
+    }
+    
+    setIsBooking(true);
+    
+    try {
+      const bookingData = {
+        userId: user.uid,
+        driverId: String(driverId),
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+        duration: tripDuration,
+        totalAmount: total,
+        status: 'pending',
+        createdAt: new Date(),
+        driverDetails: {
+          name: driver.name,
+          phone: driver.phoneNumber,
+          vehicle: driver.vehicle
+        },
+        paymentStatus: 'unpaid'
+      };
+      
+      await createBooking(bookingData);
+      setBookingSuccess(true);
+      
+      // Wait a moment before navigating
+      setTimeout(() => {
+        router.push('/(tabs)/bookings');
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      Alert.alert(
+        "Booking Failed", 
+        "There was an error processing your booking. Please try again."
+      );
+    } finally {
+      setIsBooking(false);
+    }
+  };
+  
+  if (isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <Ionicons name="timer-outline" size={50} color="#4a90e2" />
-        <ThemedText style={styles.loadingText}>Processing your booking...</ThemedText>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <ThemedText style={styles.loadingText}>Loading booking details...</ThemedText>
+      </ThemedView>
+    );
+  }
+  
+  if (error || !driver) {
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText style={styles.errorText}>{error || 'Driver not found'}</ThemedText>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  }
+  
+  if (bookingSuccess) {
+  return (
+      <ThemedView style={styles.successContainer}>
+        <View style={styles.successCircle}>
+          <Ionicons name="checkmark" size={64} color="white" />
+        </View>
+        <ThemedText style={styles.successTitle}>Booking Confirmed!</ThemedText>
+        <ThemedText style={styles.successMessage}>
+          Your driver has been booked successfully. You'll receive a confirmation shortly.
+        </ThemedText>
+        <ThemedText style={styles.redirectingText}>
+          Redirecting to your bookings...
+        </ThemedText>
       </ThemedView>
     );
   }
   
   return (
-    <ScrollView style={styles.container}>
-      <ThemedView style={styles.contentContainer}>
-        <View style={styles.successIcon}>
-          <Ionicons name="checkmark-circle" size={80} color="#4BB543" />
-        </View>
-        
-        <ThemedText type="title" style={styles.successTitle}>Booking Confirmed!</ThemedText>
-        <ThemedText style={styles.successMessage}>
-          Your driver has been booked successfully. We've sent a confirmation to your email.
-        </ThemedText>
-        
-        <ThemedView style={styles.bookingDetailsCard}>
-          <ThemedText type="subtitle">Booking Details</ThemedText>
-          
-          <View style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>Booking ID</ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.detailValue}>{booking.id}</ThemedText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>Driver</ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.detailValue}>{booking.driverName}</ThemedText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>Trip Type</ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.detailValue}>{booking.tripType}</ThemedText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>Start Date</ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.detailValue}>{formatDate(booking.startDate)}</ThemedText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>End Date</ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.detailValue}>{formatDate(booking.endDate)}</ThemedText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>Duration</ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.detailValue}>{booking.duration} days</ThemedText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>Payment Method</ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.detailValue}>{booking.paymentMethod}</ThemedText>
-          </View>
-          
-          <View style={styles.detailRow}>
-            <ThemedText style={styles.detailLabel}>Status</ThemedText>
-            <View style={styles.statusBadge}>
-              <ThemedText style={styles.statusText}>{booking.status}</ThemedText>
-            </View>
-          </View>
-          
-          <View style={[styles.detailRow, styles.totalRow]}>
-            <ThemedText style={styles.totalLabel}>Total Amount</ThemedText>
-            <ThemedText type="defaultSemiBold" style={styles.totalValue}>₹{booking.totalAmount}</ThemedText>
-          </View>
-        </ThemedView>
-        
-        <ThemedView style={styles.upcomingStepsCard}>
-          <ThemedText type="subtitle">What's Next?</ThemedText>
-          
-          <View style={styles.stepRow}>
-            <View style={styles.stepIconContainer}>
-              <Ionicons name="person-outline" size={24} color="#4a90e2" />
-            </View>
-            <View style={styles.stepContent}>
-              <ThemedText type="defaultSemiBold">Driver Contact</ThemedText>
-              <ThemedText style={styles.stepDescription}>
-                Your driver will contact you 24 hours before the trip to confirm details.
-              </ThemedText>
-            </View>
-          </View>
-          
-          <View style={styles.stepRow}>
-            <View style={styles.stepIconContainer}>
-              <Ionicons name="car-outline" size={24} color="#4a90e2" />
-            </View>
-            <View style={styles.stepContent}>
-              <ThemedText type="defaultSemiBold">Driver Arrival</ThemedText>
-              <ThemedText style={styles.stepDescription}>
-                The driver will arrive at your location 15 minutes before the scheduled time.
-              </ThemedText>
-            </View>
-          </View>
-          
-          <View style={styles.stepRow}>
-            <View style={styles.stepIconContainer}>
-              <Ionicons name="star-outline" size={24} color="#4a90e2" />
-            </View>
-            <View style={styles.stepContent}>
-              <ThemedText type="defaultSemiBold">Rate Your Trip</ThemedText>
-              <ThemedText style={styles.stepDescription}>
-                After the trip is completed, please share your feedback about the driver.
-              </ThemedText>
-            </View>
-          </View>
-        </ThemedView>
-        
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity 
-            style={styles.primaryButton}
-            onPress={() => router.replace('/(tabs)')}
-          >
-            <ThemedText style={styles.primaryButtonText}>Back to Home</ThemedText>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.secondaryButton}
-            onPress={() => router.replace('/(tabs)/explore')}
-          >
-            <ThemedText style={styles.secondaryButtonText}>View Bookings</ThemedText>
-          </TouchableOpacity>
-        </View>
-        
-        <TouchableOpacity style={styles.supportButton}>
-          <Ionicons name="help-circle-outline" size={20} color="#4a90e2" />
-          <ThemedText style={styles.supportButtonText}>Need Help?</ThemedText>
+    <ThemedView style={styles.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+      
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backIcon} 
+          onPress={() => router.back()}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
+        
+        <ThemedText style={styles.headerTitle}>Booking Confirmation</ThemedText>
+        
+        <View style={styles.emptySpace} />
+          </View>
+          
+      {/* Booking Summary Card */}
+      <View style={styles.card}>
+        <View style={styles.bookingHeader}>
+          <ThemedText style={styles.bookingTitle}>Booking Details</ThemedText>
+          </View>
+          
+        {/* Driver Info */}
+        <View style={styles.driverInfoSection}>
+          <Image source={{ uri: driver.image }} style={styles.driverImage} />
+          
+          <View style={styles.driverDetails}>
+            <ThemedText style={styles.driverName}>{driver.name}</ThemedText>
+            
+            <View style={styles.ratingContainer}>
+              <Ionicons name="star" size={16} color="#FFD700" />
+              <ThemedText style={styles.ratingText}>
+                {driver.rating.toFixed(1)} • {driver.trips} trips
+              </ThemedText>
+          </View>
+          
+            <ThemedText style={styles.vehicleText}>
+              {typeof driver.vehicle === 'object' 
+                ? `${driver.vehicle.make} ${driver.vehicle.model} (${driver.vehicle.color})`
+                : driver.vehicle}
+            </ThemedText>
+          </View>
+          </View>
+          
+        {/* Divider */}
+        <View style={styles.divider} />
+        
+        {/* Booking Dates */}
+        <View style={styles.detailsSection}>
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="calendar-outline" size={20} color="#2563EB" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <ThemedText style={styles.detailLabel}>Trip Dates</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {formatDate(parsedStartDate)} - {formatDate(parsedEndDate)}
+              </ThemedText>
+            </View>
+          </View>
+          
+          <View style={styles.detailRow}>
+            <View style={styles.detailIconContainer}>
+              <Ionicons name="time-outline" size={20} color="#2563EB" />
+            </View>
+            <View style={styles.detailTextContainer}>
+              <ThemedText style={styles.detailLabel}>Duration</ThemedText>
+              <ThemedText style={styles.detailValue}>
+                {tripDuration} {tripDuration === 1 ? 'Day' : 'Days'}
+              </ThemedText>
+            </View>
+          </View>
+        </View>
+        
+        {/* Divider */}
+        <View style={styles.divider} />
+        
+        {/* Price Breakdown */}
+        <View style={styles.priceSection}>
+          <ThemedText style={styles.priceSectionTitle}>Price Breakdown</ThemedText>
+          
+          <View style={styles.priceRow}>
+            <ThemedText style={styles.priceLabel}>
+              Driver Rate ({tripDuration} {tripDuration === 1 ? 'day' : 'days'})
+            </ThemedText>
+            <ThemedText style={styles.priceValue}>₹{driverRate}</ThemedText>
+            </View>
+          
+          <View style={styles.priceRow}>
+            <ThemedText style={styles.priceLabel}>
+              Daily Allowance ({tripDuration} {tripDuration === 1 ? 'day' : 'days'})
+              </ThemedText>
+            <ThemedText style={styles.priceValue}>₹{allowance}</ThemedText>
+          </View>
+          
+          {/* Divider for total */}
+          <View style={styles.priceDivider} />
+          
+          <View style={styles.totalRow}>
+            <ThemedText style={styles.totalLabel}>Total Amount</ThemedText>
+            <ThemedText style={styles.totalValue}>₹{total}</ThemedText>
+          </View>
+        </View>
+      </View>
+      
+      {/* Payment Notice */}
+      <View style={styles.paymentNotice}>
+        <Ionicons name="information-circle-outline" size={20} color="#4a70ae" />
+        <ThemedText style={styles.paymentNoticeText}>
+          Payment will be collected by the driver upon arrival
+        </ThemedText>
+      </View>
+      
+      {/* Terms and Conditions */}
+      <View style={styles.termsContainer}>
+        <TouchableOpacity style={styles.termsButton}>
+          <ThemedText style={styles.termsButtonText}>
+            View Terms & Conditions
+          </ThemedText>
+          </TouchableOpacity>
+        </View>
+        
+      {/* Confirm Button */}
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={styles.confirmButton}
+          onPress={handleConfirmBooking}
+          disabled={isBooking}
+        >
+          {isBooking ? (
+            <ActivityIndicator size="small" color="white" />
+          ) : (
+            <ThemedText style={styles.confirmButtonText}>Confirm Booking</ThemedText>
+          )}
+        </TouchableOpacity>
+      </View>
       </ThemedView>
-    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F8FAFC',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   loadingText: {
-    marginTop: 20,
+    marginTop: 16,
     fontSize: 16,
+    color: '#64748B',
   },
-  contentContainer: {
-    padding: 20,
-    paddingTop: 60,
+  successContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#F8FAFC',
   },
-  successIcon: {
-    alignSelf: 'center',
-    marginBottom: 20,
+  successCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   successTitle: {
-    textAlign: 'center',
-    marginBottom: 10,
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#10B981',
   },
   successMessage: {
+    fontSize: 16,
     textAlign: 'center',
-    marginBottom: 30,
-    color: '#666',
-    lineHeight: 22,
+    marginBottom: 24,
+    color: '#334155',
+    lineHeight: 24,
   },
-  bookingDetailsCard: {
-    backgroundColor: '#fff',
+  redirectingText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontStyle: 'italic',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginHorizontal: 24,
+  },
+  backButton: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    alignSelf: 'center',
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 16,
+  },
+  backIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  emptySpace: {
+    width: 40,
+  },
+  card: {
+    backgroundColor: 'white',
     borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
+    margin: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    overflow: 'hidden',
+  },
+  bookingHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  bookingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  driverInfoSection: {
+    flexDirection: 'row',
+    padding: 16,
+  },
+  driverImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    marginRight: 16,
+  },
+  driverDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  driverName: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  ratingText: {
+    marginLeft: 4,
+    fontSize: 14,
+    color: '#64748B',
+  },
+  vehicleText: {
+    fontSize: 14,
+    color: '#334155',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginHorizontal: 16,
+  },
+  detailsSection: {
+    padding: 16,
   },
   detailRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  detailIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    marginRight: 12,
+  },
+  detailTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
   },
   detailLabel: {
-    color: '#666',
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 4,
   },
   detailValue: {
-    maxWidth: '60%',
-    textAlign: 'right',
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#334155',
   },
-  statusBadge: {
-    backgroundColor: '#e0f7e0',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+  priceSection: {
+    padding: 16,
   },
-  statusText: {
-    color: '#2e7d32',
-    fontSize: 12,
+  priceSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  priceLabel: {
+    fontSize: 14,
+    color: '#334155',
+  },
+  priceValue: {
+    fontSize: 14,
     fontWeight: '500',
   },
+  priceDivider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 12,
+  },
   totalRow: {
-    borderBottomWidth: 0,
-    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   totalLabel: {
     fontSize: 16,
@@ -255,75 +524,60 @@ const styles = StyleSheet.create({
   },
   totalValue: {
     fontSize: 18,
-    color: '#4a90e2',
+    fontWeight: 'bold',
+    color: '#2563EB',
   },
-  upcomingStepsCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  stepRow: {
+  paymentNotice: {
     flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9FF',
+    padding: 12,
+    borderRadius: 8,
+    marginHorizontal: 16,
+  },
+  paymentNoticeText: {
+    fontSize: 14,
+    color: '#334155',
+    marginLeft: 8,
+    flex: 1,
+  },
+  termsContainer: {
+    alignItems: 'center',
     marginTop: 16,
   },
-  stepIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#e0f0ff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+  termsButton: {
+    padding: 8,
   },
-  stepContent: {
-    flex: 1,
+  termsButtonText: {
+    fontSize: 14,
+    color: '#2563EB',
+    textDecorationLine: 'underline',
   },
-  stepDescription: {
-    color: '#666',
-    marginTop: 4,
-    lineHeight: 20,
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  actionsContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: '#4a90e2',
-    paddingVertical: 14,
+  confirmButton: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginRight: 10,
+    justifyContent: 'center',
   },
-  primaryButtonText: {
-    color: '#fff',
+  confirmButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: '600',
-  },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginLeft: 10,
-  },
-  secondaryButtonText: {
-    color: '#333',
-  },
-  supportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-  },
-  supportButtonText: {
-    color: '#4a90e2',
-    marginLeft: 8,
   },
 }); 

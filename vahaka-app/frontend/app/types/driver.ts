@@ -6,19 +6,22 @@ export interface Badge {
 
 export interface Review {
   id: string;
-  userId: string;
-  userName: string;
+  userId?: string;
+  userName?: string;
+  user?: string; // For backward compatibility
   userAvatar?: string;
   rating: number;
-  text: string;
+  text?: string;
+  comment?: string; // For backward compatibility
   date: string;
 }
 
 export interface Vehicle {
   make: string;
   model: string;
-  year: string;
-  color: string;
+  year?: string;
+  color?: string;
+  plateNumber?: string;
 }
 
 export interface Driver {
@@ -28,12 +31,21 @@ export interface Driver {
   trips: number;
   price: number;
   image: string;
-  badges: Badge[];
+  badges?: Badge[] | null;
   description?: string;
-  languages?: string[];
-  vehicle?: Vehicle;
+  languages?: string[] | null;
+  vehicle?: string | Vehicle | null;
   vehicleImage?: string;
-  reviews?: Review[];
+  reviews?: Review[] | null;
+  experience?: number;
+  status?: string;
+  phoneNumber?: string;
+  email?: string;
+  location?: any;
+  license?: any;
+  preferences?: any;
+  vehicleDetails?: any;
+  tripType?: string;
 }
 
 export interface TripType {

@@ -1,86 +1,52 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Image, ScrollView, TouchableOpacity, Platform, StatusBar, Animated } from 'react-native';
+import { View, StyleSheet, Image, ScrollView, TouchableOpacity, Platform, StatusBar, Animated, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Calendar, DateData } from 'react-native-calendars';
 
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import ThemedText from '@/components/ThemedText';
+import ThemedView from '@/components/ThemedView';
+import driverService from './services/driverService';
 
-// Dummy driver data - in a real app, this would come from an API
-const DRIVERS: { [key: string]: {
+// Type for driver in driver details
+interface DriverDetails {
   id: string;
   name: string;
   rating: number;
   trips: number;
   price: number;
   image: string;
-  badges: string[];
-  description: string;
-  languages: string[];
-  vehicle: string;
-  vehicleImage: string;
-  reviews: Array<{
+  badges?: Array<{
+    id: string;
+    name: string;
+    icon: string;
+  }> | null;
+  description?: string;
+  languages?: string[] | null;
+  vehicle?: string | {
+    make: string;
+    model: string;
+    color?: string;
+    plateNumber?: string;
+  } | null;
+  vehicleImage?: string;
+  reviews?: Array<{
     id: string;
     user: string;
     rating: number;
     comment: string;
     date: string;
-  }>;
-}} = {
-  '1': {
-    id: '1',
-    name: 'John Doe',
-    rating: 4.8,
-    trips: 120,
-    price: 1200,
-    image: 'https://randomuser.me/api/portraits/men/32.jpg',
-    badges: ['Business', 'Outstation'],
-    description: 'Professional driver with 5+ years of experience. Specializes in business trips and outstation journeys. Excellent knowledge of highways and city routes.',
-    languages: ['English', 'Hindi'],
-    vehicle: 'Toyota Innova Crysta',
-    vehicleImage: 'https://imgd.aeplcdn.com/642x361/n/cw/ec/51435/innova-crysta-exterior-right-front-three-quarter-2.jpeg?q=75',
-    reviews: [
-      { id: '1', user: 'Alex M.', rating: 5, comment: 'Very professional and punctual. Made our business trip hassle-free.', date: '10 Mar 2024' },
-      { id: '2', user: 'Sarah K.', rating: 4, comment: 'Good driving skills and knows the city well.', date: '02 Feb 2024' },
-    ]
-  },
-  '2': {
-    id: '2',
-    name: 'Sarah Smith',
-    rating: 4.9,
-    trips: 85,
-    price: 1500,
-    image: 'https://randomuser.me/api/portraits/women/44.jpg',
-    badges: ['Weekly', 'Business'],
-    description: 'Experienced driver specialized in weekly bookings. Known for safe driving and excellent customer service. Preferred by business executives.',
-    languages: ['English', 'Hindi', 'Gujarati'],
-    vehicle: 'Honda City ZX',
-    vehicleImage: 'https://imgd.aeplcdn.com/664x374/n/cw/ec/134287/city-exterior-right-front-three-quarter-3.jpeg?isig=0&q=75',
-    reviews: [
-      { id: '1', user: 'Rajat S.', rating: 5, comment: 'Outstanding service! Sarah made our week-long trip very comfortable.', date: '21 Mar 2024' },
-      { id: '2', user: 'Priya L.', rating: 5, comment: 'Very professional and friendly. Would definitely book again.', date: '15 Feb 2024' },
-    ]
-  },
-  '3': {
-    id: '3',
-    name: 'Mike Johnson',
-    rating: 4.7,
-    trips: 150,
-    price: 1100,
-    image: 'https://randomuser.me/api/portraits/men/75.jpg',
-    badges: ['Urgent', 'Outstation'],
-    description: 'Quick response driver for urgent bookings. Experienced in outstation trips with excellent highway driving skills.',
-    languages: ['English', 'Hindi', 'Marathi'],
-    vehicle: 'Maruti Suzuki Dzire',
-    vehicleImage: 'https://imgd.aeplcdn.com/664x374/n/cw/ec/45691/dzire-exterior-right-front-three-quarter-3.jpeg?q=75',
-    reviews: [
-      { id: '1', user: 'Vikram J.', rating: 4, comment: 'Reached within minutes for our urgent requirement. Good driving.', date: '25 Mar 2024' },
-      { id: '2', user: 'Meera P.', rating: 5, comment: 'Very helpful during our outstation trip. Knows all the good spots.', date: '11 Mar 2024' },
-    ]
-  },
-};
+  }> | null;
+  experience?: number;
+  status?: string;
+  phoneNumber?: string;
+  email?: string;
+  location?: any;
+  license?: any;
+  preferences?: any;
+  vehicleDetails?: any;
+}
 
 export default function DriverDetailsScreen() {
   const router = useRouter();
@@ -89,20 +55,87 @@ export default function DriverDetailsScreen() {
   const [endDate, setEndDate] = useState<string | null>(null);
   const [tripDuration, setTripDuration] = useState(1);
   const [showReviews, setShowReviews] = useState(false);
+  const [driver, setDriver] = useState<DriverDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   // Animation for footer
   const footerAnimation = useRef(new Animated.Value(0)).current;
   
   // Get driver details based on ID
-  const driverId = typeof id === 'string' ? id : '1';
-  const driver = DRIVERS[driverId];
+  const driverId = typeof id === 'string' ? id : '';
   
-  if (!driver) {
+  useEffect(() => {
+    const fetchDriverDetails = async () => {
+      try {
+        setIsLoading(true);
+        console.log('Fetching driver details for ID:', driverId);
+        const data = await driverService.getDriverById(driverId);
+        
+        // Debug the data received from Firestore
+        console.log('Driver data received:', data ? JSON.stringify(data) : 'No data');
+        if (data) {
+          console.log('Driver data field types:', 
+            Object.entries(data).map(([key, value]) => 
+              `${key}: ${typeof value}${Array.isArray(value) ? ' (array)' : ''}`
+            ).join(', ')
+          );
+          
+          // Add more specific debug logging for rating and trips fields
+          console.log('RATING data:', {
+            rating: data.rating,
+            ratingType: typeof data.rating,
+            ratingValue: Number(data.rating)
+          });
+          console.log('TRIPS data:', {
+            trips: data.trips,
+            tripsType: typeof data.trips,
+            tripsValue: Number(data.trips)
+          });
+          console.log('EXPERIENCE data:', {
+            experience: data.experience,
+            experienceType: typeof data.experience,
+            experienceValue: Number(data.experience)
+          });
+        }
+        
+        if (data) {
+          setDriver(data);
+        } else {
+          console.error('No driver data returned from getDriverById');
+          setError('Driver not found');
+        }
+      } catch (error) {
+        console.error('Error fetching driver details:', error);
+        setError('Failed to load driver details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (driverId) {
+      fetchDriverDetails();
+    } else {
+      setError('Invalid driver ID');
+      setIsLoading(false);
+    }
+  }, [driverId]);
+  
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <ThemedText style={styles.loadingText}>Loading driver details...</ThemedText>
+      </ThemedView>
+    );
+  }
+  
+  if (error || !driver) {
     return (
       <ThemedView style={styles.container}>
-        <ThemedText>Driver not found</ThemedText>
-        <TouchableOpacity onPress={() => router.back()}>
-          <ThemedText style={styles.backLink}>Go Back</ThemedText>
+        <ThemedText style={styles.errorText}>{error || 'Driver not found'}</ThemedText>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
         </TouchableOpacity>
       </ThemedView>
     );
@@ -200,13 +233,13 @@ export default function DriverDetailsScreen() {
         tempStart.setDate(tempStart.getDate() + 1);
         
         // Mark all dates in between
-        while (tempStart < end) {
-          const dateString = tempStart.toISOString().split('T')[0];
-          markedDates[dateString] = { 
-            color: '#153450', 
-            textColor: '#ffffff' 
+        let currentDate = tempStart;
+        while (currentDate < end) {
+          markedDates[currentDate.toISOString().split('T')[0]] = { 
+            color: '#e6f2ff', 
+            textColor: '#4a90e2' 
           };
-          tempStart.setDate(tempStart.getDate() + 1);
+          currentDate.setDate(currentDate.getDate() + 1);
         }
       }
     }
@@ -214,362 +247,517 @@ export default function DriverDetailsScreen() {
     return markedDates;
   };
   
+  // Format date for display
   const formatDate = (date: string | null) => {
-    if (!date) return 'Not selected';
-    return new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (!date) return 'Select';
+    const dateObj = new Date(date);
+    return dateObj.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
   };
   
-  // Animate footer when dates are selected
-  useEffect(() => {
-    if (startDate && endDate) {
-      Animated.sequence([
-        Animated.timing(footerAnimation, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(footerAnimation, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        })
-      ]).start();
-    }
-  }, [startDate, endDate]);
-  
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#121212" />
-      
-      <ScrollView 
-        style={styles.container}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <View style={styles.header}>
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.7)']}
-            style={styles.headerGradient}
-          />
-          <Image 
-            source={{ uri: driver.image }} 
-            style={styles.headerImage} 
-          />
+  // Render driver profile section
+  const renderDriverProfile = () => (
+    <View style={styles.driverProfileContainer}>
+      <View style={styles.driverCardHeader}>
+        <Image source={{ uri: driver.image }} style={styles.driverImage} />
+        <View style={styles.driverInfo}>
+          <View style={styles.nameAndPriceContainer}>
+            <View style={styles.nameAndRatingContainer}>
+              <ThemedText style={styles.driverName}>{driver.name}</ThemedText>
+            <View style={styles.ratingContainer}>
+                <Ionicons name="star" size={14} color="#FFD700" />
+                <ThemedText style={styles.ratingText}>{driver.rating.toFixed(1)} • {driver.trips} trips</ThemedText>
+              </View>
+            </View>
+            <View style={styles.priceContainer}>
+              <ThemedText style={styles.priceValue}>₹{driver.price}</ThemedText>
+              <ThemedText style={styles.perDayText}>per day</ThemedText>
+            </View>
+          </View>
+        </View>
         </View>
         
-        <ThemedView style={styles.driverInfoContainer}>
-          <View style={styles.driverHeader}>
-            <View>
-              <ThemedText type="title">{driver.name}</ThemedText>
-              <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={16} color="#FFD700" />
-                <ThemedText style={styles.ratingText}>
-                  {driver.rating} • {driver.trips} trips
-                </ThemedText>
-              </View>
+        <View style={styles.badgeContainer}>
+        {driver.badges && driver.badges.length > 0 ? (
+          driver.badges.map((badge, index) => (
+            <View key={index} style={styles.badge}>
+              <Ionicons 
+                name={(badge.icon || "star") as any} 
+                size={14} 
+                color="#2563EB" 
+                style={styles.badgeIcon} 
+              />
+              <ThemedText style={styles.badgeText}>{badge.name}</ThemedText>
             </View>
-            <TouchableOpacity style={styles.favoriteButton}>
-              <Ionicons name="heart-outline" size={24} color="#ff3b30" />
-            </TouchableOpacity>
+          ))
+        ) : null}
+      </View>
+    </View>
+  );
+
+  // Render driver bio section
+  const renderDriverBio = () => (
+    <View style={styles.sectionContainer}>
+      <ThemedText style={styles.sectionTitle}>About Driver</ThemedText>
+      
+      <ThemedText style={styles.bioText}>
+        {driver.description}
+      </ThemedText>
+      
+      <View style={styles.statsContainer}>
+        <View style={styles.statItem}>
+          <Ionicons name="car-outline" size={24} color="#2563EB" />
+          <ThemedText style={styles.statValue}>{driver.trips}</ThemedText>
+          <ThemedText style={styles.statLabel}>Trips</ThemedText>
+        </View>
+        
+        <View style={styles.statItem}>
+          <Ionicons name="time-outline" size={24} color="#2563EB" />
+          <ThemedText style={styles.statValue}>{driver.experience}+</ThemedText>
+          <ThemedText style={styles.statLabel}>Years</ThemedText>
+        </View>
+        
+        <View style={styles.statItem}>
+          <Ionicons name="location-outline" size={24} color="#2563EB" />
+          <ThemedText style={styles.statValue}>Local</ThemedText>
+          <ThemedText style={styles.statLabel}>Expert</ThemedText>
+            </View>
+            </View>
           </View>
-          
-          <View style={styles.badgeContainer}>
-            {driver.badges.map((badge: string, index: number) => (
-              <View key={index} style={styles.badge}>
-                <ThemedText style={styles.badgeText}>{badge}</ThemedText>
-              </View>
-            ))}
-          </View>
-          
-          <ThemedView style={styles.section}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>About Driver</ThemedText>
-            <ThemedText style={styles.description}>{driver.description}</ThemedText>
-            
-            <View style={styles.detailsContainer}>
-              <View style={styles.detailItem}>
-                <Ionicons name="car-outline" size={20} color="#4a90e2" />
-                <ThemedText style={styles.detailText}>{driver.vehicle}</ThemedText>
-              </View>
-              <View style={styles.detailItem}>
-                <Ionicons name="language-outline" size={20} color="#4a90e2" />
-                <ThemedText style={styles.detailText}>{driver.languages.join(', ')}</ThemedText>
-              </View>
-            </View>
-          </ThemedView>
-          
-          <ThemedView style={styles.priceBreakdownContainer}>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Price Breakdown</ThemedText>
-            <View style={styles.priceRow}>
-              <ThemedText style={styles.priceRowText}>Driver Charges (₹{driver.price}/day × {tripDuration} days)</ThemedText>
-              <ThemedText type="defaultSemiBold" style={styles.priceRowText}>₹{totalPrice}</ThemedText>
-            </View>
-            <View style={styles.priceRow}>
-              <ThemedText style={styles.priceRowText}>Food & Stay Allowance</ThemedText>
-              <ThemedText type="defaultSemiBold" style={styles.priceRowText}>₹{allowancePrice}</ThemedText>
-            </View>
-            <View style={[styles.priceRow, styles.totalRow]}>
-              <ThemedText type="defaultSemiBold" style={styles.priceRowText}>Total Amount</ThemedText>
-              <ThemedText type="defaultSemiBold" style={styles.totalPrice}>₹{finalPrice}</ThemedText>
-            </View>
-          </ThemedView>
-          
-          <ThemedView style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Reviews</ThemedText>
-              <TouchableOpacity onPress={() => setShowReviews(!showReviews)}>
-                <ThemedText style={styles.viewAllText}>
-                  {showReviews ? 'Show Less' : 'View All'}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-            
-            {driver.reviews.slice(0, showReviews ? undefined : 1).map((review: {
-              id: string;
-              user: string;
-              rating: number;
-              comment: string;
-              date: string;
-            }) => (
-              <View key={review.id} style={styles.reviewItem}>
-                <View style={styles.reviewHeader}>
-                  <ThemedText style={styles.reviewUserName}>{review.user}</ThemedText>
-                  <ThemedText style={styles.reviewDate}>{review.date}</ThemedText>
-                </View>
-                <View style={styles.reviewRating}>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Ionicons 
-                      key={i}
-                      name={i < review.rating ? "star" : "star-outline"} 
-                      size={16} 
-                      color="#FFD700" 
-                      style={styles.reviewStar}
-                    />
-                  ))}
-                </View>
-                <ThemedText style={styles.reviewComment}>{review.comment}</ThemedText>
-              </View>
-            ))}
-          </ThemedView>
-          
-          <ThemedView style={[styles.section, styles.calendarSection]}>
-            <View style={styles.sectionHeader}>
-              <ThemedText type="subtitle" style={styles.sectionTitle}>Select Dates</ThemedText>
-            </View>
-            
-            <View style={styles.dateSelectionContainer}>
-              <View style={styles.dateInfoRow}>
-                <View style={styles.dateInfo}>
-                  <ThemedText style={styles.dateLabel}>Start Date:</ThemedText>
-                  <ThemedText style={styles.selectedDateText}>
-                    {startDate ? formatDate(startDate) : "Not selected"}
+  );
+
+  // Render vehicle section
+  const renderVehicle = () => (
+    <View style={styles.sectionContainer}>
+      <ThemedText style={styles.sectionTitle}>Vehicle</ThemedText>
+      
+      <View style={styles.vehicleContainer}>
+        <View style={styles.vehicleInfo}>
+          {typeof driver.vehicle === 'string' ? (
+            <ThemedText style={styles.vehicleName}>{driver.vehicle}</ThemedText>
+          ) : (
+            <>
+              <ThemedText style={styles.vehicleName}>
+                {(driver.vehicle as {make: string, model: string}).make} {(driver.vehicle as {make: string, model: string}).model}
+              </ThemedText>
+              
+              <View style={styles.vehicleDetailsGrid}>
+                <View style={styles.vehicleDetailColumn}>
+                  {(driver.vehicle as {color?: string})?.color && (
+                    <ThemedText style={styles.vehicleFeature}>
+                      <Ionicons name="color-palette-outline" size={16} color="#10B981" /> {(driver.vehicle as {color: string}).color}
+                    </ThemedText>
+                  )}
+                  
+                  <ThemedText style={styles.vehicleFeature}>
+                    <Ionicons name="checkmark-circle" size={16} color="#10B981" /> Air Conditioned
                   </ThemedText>
                 </View>
                 
-                <View style={styles.dateInfo}>
-                  <ThemedText style={styles.dateLabel}>End Date:</ThemedText>
-                  <ThemedText style={styles.selectedDateText}>
-                    {endDate 
-                      ? (startDate === endDate ? "Same Day" : formatDate(endDate))
-                      : "Not selected"}
+                <View style={styles.vehicleDetailColumn}>
+                  {(driver.vehicle as {plateNumber?: string})?.plateNumber && (
+                    <ThemedText style={styles.vehicleFeature}>
+                      <Ionicons name="car-outline" size={16} color="#10B981" /> {(driver.vehicle as {plateNumber: string}).plateNumber}
+                    </ThemedText>
+                  )}
+                  
+                  <ThemedText style={styles.vehicleFeature}>
+                    <Ionicons name="checkmark-circle" size={16} color="#10B981" /> Well Maintained
                   </ThemedText>
                 </View>
               </View>
-              
-              <ThemedText style={styles.calendarHelpText}>
-                {!startDate 
-                  ? "Tap a date to select for a single day booking" 
-                  : (startDate === endDate)
-                    ? "Tap the same date to cancel, or a different date to select a range" 
-                    : "Tap any date to reset and start over"}
+            </>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+
+  // Render reviews section
+  const renderReviews = () => (
+    <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+        <ThemedText style={styles.sectionTitle}>Reviews</ThemedText>
+        {driver.reviews && driver.reviews.length > 0 && (
+            <TouchableOpacity onPress={() => setShowReviews(!showReviews)}>
+            <ThemedText style={styles.seeAllButton}>
+              {showReviews ? 'See Less' : 'See All'}
               </ThemedText>
-              
-              <Calendar
-                onDayPress={handleDateSelect}
-                markedDates={getMarkedDates()}
-                markingType="period"
-                minDate={new Date().toISOString().split('T')[0]}
-                theme={{
-                  calendarBackground: '#121212',
-                  textSectionTitleColor: '#4a90e2',
-                  selectedDayBackgroundColor: '#4a90e2',
-                  selectedDayTextColor: '#ffffff',
-                  todayTextColor: '#4a90e2',
-                  dayTextColor: '#ffffff',
-                  textDisabledColor: '#666666',
-                  dotColor: '#4a90e2',
-                  selectedDotColor: '#ffffff',
-                  arrowColor: '#4a90e2',
-                  monthTextColor: '#ffffff',
-                  indicatorColor: '#4a90e2',
-                  'stylesheet.calendar.header': {
-                    header: {
-                      backgroundColor: '#121212',
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      paddingVertical: 10
-                    },
-                    monthText: {
-                      color: '#ffffff',
-                      fontSize: 16,
-                      fontWeight: 'bold'
-                    }
-                  }
-                }}
-                style={styles.calendar}
-              />
-              
-              {startDate && endDate && (
-                <View style={styles.tripDurationInfo}>
-                  <Ionicons name="time-outline" size={20} color="#4a90e2" style={styles.durationIcon} />
-                  <ThemedText style={styles.durationText}>
-                    {tripDuration === 1 
-                      ? "Single day booking" 
-                      : `Trip duration: ${tripDuration} days`}
-                  </ThemedText>
+            </TouchableOpacity>
+        )}
+          </View>
+          
+      {driver.reviews && driver.reviews.length > 0 ? (
+        <>
+          {(showReviews ? driver.reviews : driver.reviews.slice(0, 2)).map((review, index) => (
+            <View key={index} style={styles.reviewCard}>
+              <View style={styles.reviewHeader}>
+                <ThemedText style={styles.reviewUser}>{review.user}</ThemedText>
+              <View style={styles.reviewRating}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                  <Ionicons 
+                      key={star}
+                      name="star"
+                    size={14} 
+                      color={star <= review.rating ? "#FFD700" : "#E2E8F0"}
+                      style={{ marginRight: 2 }}
+                  />
+                ))}
                 </View>
-              )}
+              </View>
+              <ThemedText style={styles.reviewComment}>{review.comment}</ThemedText>
+              <ThemedText style={styles.reviewDate}>{review.date}</ThemedText>
             </View>
-          </ThemedView>
-        </ThemedView>
+          ))}
+        </>
+      ) : (
+        <View style={styles.noReviewsContainer}>
+          <ThemedText style={styles.noReviewsText}>No reviews yet</ThemedText>
+        </View>
+      )}
+    </View>
+  );
+
+  // Render calendar section for booking
+  const renderCalendar = () => (
+    <View style={styles.sectionContainer}>
+      <ThemedText style={styles.sectionTitle}>Select Dates</ThemedText>
+      
+      <View style={styles.dateSelectionContainer}>
+        <View style={styles.dateBox}>
+          <ThemedText style={styles.dateLabel}>From</ThemedText>
+          <ThemedText style={styles.dateValue}>{formatDate(startDate)}</ThemedText>
+        </View>
+        
+        <View style={styles.dateArrow}>
+          <Ionicons name="arrow-forward" size={20} color="#CBD5E1" />
+        </View>
+        
+        <View style={styles.dateBox}>
+          <ThemedText style={styles.dateLabel}>To</ThemedText>
+          <ThemedText style={styles.dateValue}>{formatDate(endDate)}</ThemedText>
+        </View>
+      </View>
+      
+      <Calendar
+        style={styles.calendar}
+        theme={{
+          calendarBackground: '#FFFFFF',
+          textSectionTitleColor: '#334155',
+          selectedDayBackgroundColor: '#4a90e2',
+          selectedDayTextColor: '#FFFFFF',
+          todayTextColor: '#2563EB',
+          dayTextColor: '#334155',
+          textDisabledColor: '#CBD5E1',
+          dotColor: '#4a90e2',
+          arrowColor: '#2563EB',
+          monthTextColor: '#334155',
+        }}
+        minDate={new Date().toISOString().split('T')[0]}
+        markedDates={getMarkedDates()}
+        markingType="period"
+        onDayPress={handleDateSelect}
+      />
+    </View>
+  );
+
+  // Render price breakdown
+  const renderPriceBreakdown = () => (
+    <View style={styles.sectionContainer}>
+      <ThemedText style={styles.sectionTitle}>Price Breakdown</ThemedText>
+      
+      <View style={styles.priceBreakdownItem}>
+        <ThemedText style={styles.priceBreakdownLabel}>
+          Daily Rate × {tripDuration} {tripDuration === 1 ? 'day' : 'days'}
+              </ThemedText>
+        <ThemedText style={styles.priceBreakdownValue}>₹{totalPrice}</ThemedText>
+      </View>
+      
+      <View style={styles.priceBreakdownItem}>
+        <ThemedText style={styles.priceBreakdownLabel}>
+          Daily Allowance × {tripDuration} {tripDuration === 1 ? 'day' : 'days'}
+              </ThemedText>
+        <ThemedText style={styles.priceBreakdownValue}>₹{allowancePrice}</ThemedText>
+            </View>
+      
+      <View style={styles.priceDivider} />
+      
+      <View style={styles.priceBreakdownItem}>
+        <ThemedText style={styles.priceBreakdownTotal}>Total</ThemedText>
+        <ThemedText style={styles.priceBreakdownTotalValue}>₹{finalPrice}</ThemedText>
+          </View>
+          </View>
+  );
+  
+  // Updated return statement to rely on the built-in layout header
+  return (
+    <ThemedView style={styles.container}>
+      <StatusBar backgroundColor="white" barStyle="dark-content" />
+      
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {renderDriverProfile()}
+        {renderDriverBio()}
+        {renderVehicle()}
+        {renderReviews()}
+        {renderCalendar()}
+        {renderPriceBreakdown()}
       </ScrollView>
       
-      {/* Fixed footer with price and booking button */}
-      <Animated.View 
-        style={[
-          styles.footer,
-          { 
-            transform: [{ translateY: footerAnimation.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, -10]
-            }) }] 
-          }
-        ]}
-      >
+      {/* Fixed booking button */}
+      <View style={styles.footer}>
         <View style={styles.footerPriceContainer}>
-          <View style={styles.footerPriceRow}>
-            <ThemedText type="defaultSemiBold" style={styles.footerPrice}>₹{finalPrice}</ThemedText>
-            <View style={styles.availabilityBadge}>
-              <ThemedText style={styles.availabilityText}>Available</ThemedText>
-            </View>
-          </View>
-          <ThemedText style={styles.footerPriceDetail}>for {tripDuration} days</ThemedText>
+          <ThemedText style={styles.footerPriceValue}>₹{finalPrice}</ThemedText>
+          <ThemedText style={styles.footerPriceLabel}>
+            {startDate && endDate 
+              ? `Total for ${tripDuration} ${tripDuration === 1 ? 'day' : 'days'}`
+              : 'Select dates to view total'}
+          </ThemedText>
         </View>
+        
         <TouchableOpacity 
           style={[
             styles.bookButton,
-            (!startDate || !endDate) && styles.disabledBookButton
+            (!startDate || !endDate) && styles.bookButtonDisabled
           ]}
+          onPress={() => router.push(`/booking-confirmation?driverId=${driver.id}&startDate=${startDate}&endDate=${endDate}`)}
           disabled={!startDate || !endDate}
-          onPress={() => {
-            if (startDate && endDate) {
-              router.push({
-                pathname: '/booking-confirmation',
-                params: { 
-                  bookingId: Math.floor(Math.random() * 1000000).toString() 
-                }
-              });
-            }
-          }}
         >
-          <ThemedText style={[
-            styles.bookButtonText,
-            (!startDate || !endDate) && styles.disabledBookButtonText
-          ]}>
-            {(startDate && endDate) ? "Book Now" : "Select Dates"}
+          <ThemedText style={styles.bookButtonText}>
+            {startDate && endDate ? 'Book Now' : 'Select Dates'}
           </ThemedText>
         </TouchableOpacity>
-      </Animated.View>
-    </View>
+      </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#F8FAFC',
   },
-  header: {
-    height: 250,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748B',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginHorizontal: 24,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    zIndex: 10,
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingTop: 16,
+    paddingBottom: 100,
+  },
+  driverProfileContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
     position: 'relative',
   },
-  headerGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 120,
-    zIndex: 1,
+  driverCardHeader: {
+    flexDirection: 'row',
+    marginBottom: 12,
   },
-  headerImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  driverImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 12,
   },
-  driverInfoContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
+  driverInfo: {
+    flex: 1,
+    justifyContent: 'flex-start',
   },
-  driverHeader: {
+  nameAndPriceContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    marginBottom: 0,
+  },
+  nameAndRatingContainer: {
+    flexDirection: 'column',
+    justifyContent: 'flex-start',
+    flex: 1,
+    marginRight: 8,
+  },
+  driverName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 0,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 1,
+    marginBottom: 0,
   },
   ratingText: {
     fontSize: 14,
+    color: '#64748B',
     marginLeft: 4,
-    color: '#aaaaaa',
   },
-  favoriteButton: {
-    padding: 8,
+  priceContainer: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+  },
+  priceValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2563EB',
+  },
+  perDayText: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: -2,
   },
   badgeContainer: {
     flexDirection: 'row',
-    marginTop: 12,
     flexWrap: 'wrap',
+    marginTop: 1,
+    gap: 4,
+    paddingLeft: 4,
   },
   badge: {
-    backgroundColor: '#153450',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
     borderRadius: 16,
-    marginRight: 8,
-    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 4,
+    marginBottom: 4,
+  },
+  badgeIcon: {
+    marginRight: 4,
   },
   badgeText: {
     fontSize: 12,
-    color: '#4a90e2',
-    fontWeight: '500',
+    color: '#2563EB',
+    marginLeft: 4,
   },
-  section: {
-    marginTop: 24,
+  sectionContainer: {
+    padding: 16,
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  description: {
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  bioText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#334155',
+    marginBottom: 16,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
     marginTop: 8,
-    marginBottom: 20,
-    lineHeight: 22,
-    color: '#aaaaaa',
-    fontSize: 15,
-    letterSpacing: 0.2,
+    marginBottom: 4,
   },
-  detailsContainer: {
-    marginTop: 0,
+  statLabel: {
+    fontSize: 12,
+    color: '#64748B',
   },
-  detailItem: {
+  vehicleContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    marginTop: 8,
+  },
+  vehicleInfo: {
+    width: '100%',
+  },
+  vehicleName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: 12,
+  },
+  vehicleDetailsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  vehicleDetailColumn: {
+    flex: 1,
+    paddingHorizontal: 4,
+  },
+  vehicleFeature: {
+    fontSize: 14,
+    color: '#475569',
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 14,
-    paddingVertical: 0,
-  },
-  detailText: {
-    marginLeft: 10,
-    fontSize: 15,
-    color: '#aaaaaa',
-    fontWeight: '500',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -577,238 +765,152 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#4a90e2',
-  },
-  viewAllText: {
-    color: '#4a90e2',
+  seeAllButton: {
     fontSize: 14,
-    fontWeight: '600',
-    padding: 4,
+    color: '#2563EB',
   },
-  reviewItem: {
-    backgroundColor: '#1e1e1e',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  reviewCard: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    paddingVertical: 12,
   },
   reviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
-  reviewUserName: {
+  reviewUser: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: '#aaaaaa',
-    fontWeight: '500',
+    fontWeight: '600',
   },
   reviewRating: {
     flexDirection: 'row',
-    marginVertical: 8,
-  },
-  reviewStar: {
-    marginHorizontal: 2,
+    alignItems: 'center',
   },
   reviewComment: {
     fontSize: 14,
-    lineHeight: 22,
-    color: '#cccccc',
-    letterSpacing: 0.3,
+    color: '#334155',
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  noReviewsContainer: {
+    padding: 16,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  noReviewsText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 16,
   },
   dateSelectionContainer: {
-    marginTop: 16,
-  },
-  dateInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    backgroundColor: '#1e1e1e',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-  },
-  dateInfo: {
-    flexDirection: 'column',
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  dateLabel: {
-    fontSize: 14,
-    color: '#4a90e2',
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  selectedDateText: {
-    fontSize: 14,
-    color: '#ffffff',
-    fontWeight: '600',
-    backgroundColor: '#4a90e2',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    overflow: 'hidden',
-    minWidth: 120,
-    textAlign: 'center',
-  },
-  tripDurationInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#153450',
+    marginBottom: 16,
+  },
+  dateBox: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
     padding: 12,
     borderRadius: 8,
-    marginTop: 8,
   },
-  durationIcon: {
-    marginRight: 8,
+  dateLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 4,
   },
-  durationText: {
+  dateValue: {
     fontSize: 14,
-    color: '#4a90e2',
-    fontWeight: '600',
+    fontWeight: '500',
   },
-  priceBreakdownContainer: {
-    marginTop: 24,
-    backgroundColor: '#1e1e1e',
-    padding: 16,
+  dateArrow: {
+    marginHorizontal: 12,
+  },
+  calendar: {
     borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
-  priceRow: {
+  priceBreakdownItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 12,
+    marginBottom: 12,
   },
-  totalRow: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
+  priceBreakdownLabel: {
+    fontSize: 14,
+    color: '#334155',
   },
-  totalPrice: {
-    color: '#4a90e2',
-    fontSize: 18,
+  priceBreakdownValue: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  priceDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginVertical: 12,
+  },
+  priceBreakdownTotal: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  priceBreakdownTotalValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2563EB',
   },
   footer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#1e1e1e',
-    borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 8,
-    zIndex: 1000,
+    elevation: 4,
   },
   footerPriceContainer: {
     flex: 1,
   },
-  footerPriceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  footerPrice: {
+  footerPriceValue: {
     fontSize: 18,
-    color: '#4a90e2',
+    fontWeight: 'bold',
+    color: '#2563EB',
   },
-  availabilityBadge: {
-    backgroundColor: '#153450',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 16,
-    marginLeft: 8,
-  },
-  availabilityText: {
+  footerPriceLabel: {
     fontSize: 12,
-    color: '#4a90e2',
-    fontWeight: '500',
-  },
-  footerPriceDetail: {
-    fontSize: 12,
-    color: '#aaaaaa',
+    color: '#64748B',
   },
   bookButton: {
-    backgroundColor: '#4a90e2',
-    paddingHorizontal: 24,
+    backgroundColor: '#2563EB',
     paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 8,
   },
   bookButtonText: {
-    color: '#fff',
+    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
-  backLink: {
-    color: '#4a90e2',
-    marginTop: 8,
-  },
-  priceRowText: {
-    color: '#cccccc',
-    fontSize: 14,
-  },
-  calendar: {
-    marginTop: 16,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  calendarHelpText: {
-    color: '#ffffff',
-    fontSize: 13,
-    textAlign: 'center',
-    backgroundColor: 'rgba(74, 144, 226, 0.7)',
-    padding: 10,
-    borderRadius: 6,
-    marginBottom: 16,
-  },
-  scrollContent: {
-    paddingBottom: 84,
-  },
-  disabledBookButton: {
-    backgroundColor: '#505050',
-    opacity: 1,
-  },
-  calendarSection: {
-    backgroundColor: '#1e1e1e',
-    padding: 16,
-    borderRadius: 8,
-  },
-  disabledBookButtonText: {
-    color: '#aaaaaa',
-  },
-  sameDayBadge: {
-    backgroundColor: '#153450',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginTop: 4,
-    alignSelf: 'center',
-  },
-  sameDayText: {
-    fontSize: 12,
-    color: '#4a90e2',
-    fontWeight: '500',
+  bookButtonDisabled: {
+    backgroundColor: '#E2E8F0',
   },
 }); 
