@@ -1,11 +1,13 @@
-import { Image, StyleSheet, Platform, TextInput, TouchableOpacity, FlatList, View, Animated, Dimensions, StatusBar, ScrollView, findNodeHandle, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { Image, StyleSheet, Platform, TextInput, TouchableOpacity, FlatList, View, Animated, Dimensions, StatusBar, ScrollView, findNodeHandle, ActivityIndicator, useWindowDimensions, RefreshControl } from 'react-native';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Driver, TripType, Badge } from '../types/driver';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import React from 'react';
+import { useAuth } from '../context/auth';
+import { useLocation } from '../context/location';
 
 import ThemedText from '../../components/ThemedText';
 import ThemedView from '../../components/ThemedView';
@@ -144,6 +146,8 @@ export default function HomeScreen() {
   const tripTypeListRef = useRef<FlatList>(null);
   
   const router = useRouter();
+  const { user } = useAuth();
+  const { currentCity, isLoading: isLocationLoading, refreshLocation } = useLocation();
 
   // Fetch drivers from Firestore when component mounts
   useEffect(() => {
@@ -346,7 +350,11 @@ export default function HomeScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
       
       {/* Fixed Header with Search */}
         <LinearGradient
@@ -360,25 +368,34 @@ export default function HomeScreen() {
               <ThemedText style={styles.headerSubtitle}>Find and book the perfect driver</ThemedText>
             </View>
             
-            <TouchableOpacity style={styles.locationSelector}>
+            <TouchableOpacity 
+              style={styles.locationSelector}
+              onPress={refreshLocation}
+            >
               <Ionicons name="location-outline" size={16} color="#fff" />
-              <ThemedText style={styles.locationText}>Mumbai</ThemedText>
-              <Ionicons name="chevron-down" size={14} color="#fff" />
+              <ThemedText style={styles.locationText}>
+                {isLocationLoading ? 'Locating...' : currentCity || 'Select Location'}
+              </ThemedText>
+              {isLocationLoading ? (
+                <ActivityIndicator size="small" color="#fff" style={{ marginLeft: 4, width: 14, height: 14 }} />
+              ) : (
+                <Ionicons name="chevron-down" size={14} color="#fff" />
+              )}
             </TouchableOpacity>
           </View>
 
           {/* Search Bar - Fixed */}
           <View style={styles.searchSection}>
-        <View style={styles.searchBar}>
+            <View style={styles.searchBar}>
               <Ionicons name="search" size={18} color="#94A3B8" />
-          <TextInput
-            style={styles.searchInput}
+              <TextInput
+                style={styles.searchInput}
                 placeholder="Search by driver name"
                 placeholderTextColor="#94A3B8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
           </View>
         </View>
       </LinearGradient>

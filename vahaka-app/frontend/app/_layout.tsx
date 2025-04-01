@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import { AppState, AppStateStatus, Platform, Alert, View, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from './context/auth';
+import { LocationProvider } from './context/location';
 import { testFirestoreConnection } from './services/firebaseConfig';
 import initializeFirestore from './services/initFirestore';
 import { getApps, initializeApp } from 'firebase/app';
@@ -157,41 +158,43 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AuthProvider>
-          <AuthGuard>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen 
-                name="(profile)" 
-                options={{ 
-                  headerShown: false,
-                  headerStyle: {
-                    backgroundColor: '#FFFFFF',
-                  },
-                  headerTintColor: '#2563EB',
-                  headerTitleStyle: {
-                    fontWeight: '600',
-                  }
-                }} 
-              />
-              <Stack.Screen 
-                name="driver-details" 
-                options={{ 
-                  headerShown: true, 
-                  title: "Driver Details",
-                  headerStyle: {
-                    backgroundColor: '#FFFFFF',
-                  },
-                  headerTintColor: '#2563EB',
-                  headerTitleStyle: {
-                    fontWeight: '600',
-                  },
-                }} 
-              />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-          </AuthGuard>
-          <StatusBar style="auto" />
+          <LocationProvider>
+            <AuthGuard>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen 
+                  name="(profile)" 
+                  options={{ 
+                    headerShown: false,
+                    headerStyle: {
+                      backgroundColor: '#FFFFFF',
+                    },
+                    headerTintColor: '#2563EB',
+                    headerTitleStyle: {
+                      fontWeight: '600',
+                    }
+                  }} 
+                />
+                <Stack.Screen 
+                  name="driver-details" 
+                  options={{ 
+                    headerShown: true, 
+                    title: "Driver Details",
+                    headerStyle: {
+                      backgroundColor: '#FFFFFF',
+                    },
+                    headerTintColor: '#2563EB',
+                    headerTitleStyle: {
+                      fontWeight: '600',
+                    },
+                  }} 
+                />
+                <Stack.Screen name="+not-found" />
+              </Stack>
+            </AuthGuard>
+            <StatusBar style="auto" />
+          </LocationProvider>
         </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
