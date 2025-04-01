@@ -80,7 +80,7 @@ export default function BookingConfirmationScreen() {
         "Please login to confirm your booking.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Login", onPress: () => router.push("/auth/login") }
+          { text: "Login", onPress: () => router.push("/(auth)/login") }
         ]
       );
       return;
@@ -89,6 +89,7 @@ export default function BookingConfirmationScreen() {
     setIsBooking(true);
     
     try {
+      console.log('Preparing booking data with user ID:', user.uid);
       const bookingData = {
         userId: user.uid,
         driverId: String(driverId),
@@ -100,13 +101,17 @@ export default function BookingConfirmationScreen() {
         createdAt: new Date(),
         driverDetails: {
           name: driver.name,
-          phone: driver.phoneNumber,
-          vehicle: driver.vehicle
+          phone: driver.phoneNumber || 'Not available',
+          vehicle: driver.vehicle || 'Not specified'
         },
-        paymentStatus: 'unpaid'
+        paymentStatus: 'unpaid',
+        location: 'Not specified', // Add default location
+        tripType: 'Standard', // Add default trip type
       };
       
-      await createBooking(bookingData);
+      console.log('Attempting to create booking...');
+      const bookingId = await createBooking(bookingData);
+      console.log('Booking created successfully with ID:', bookingId);
       setBookingSuccess(true);
       
       // Wait a moment before navigating
@@ -116,10 +121,18 @@ export default function BookingConfirmationScreen() {
       
     } catch (error) {
       console.error('Error creating booking:', error);
-      Alert.alert(
-        "Booking Failed", 
-        "There was an error processing your booking. Please try again."
-      );
+      // More detailed error message
+      let errorMessage = "There was an error processing your booking. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Missing or insufficient permissions')) {
+          errorMessage = "The app doesn't have permission to create bookings. Please check your Firebase security rules.";
+        } else if (error.message.includes('network')) {
+          errorMessage = "Network error. Please check your internet connection and try again.";
+        }
+      }
+      
+      Alert.alert("Booking Failed", errorMessage);
     } finally {
       setIsBooking(false);
     }

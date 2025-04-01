@@ -25,6 +25,13 @@ const ProfileScreen = () => {
       try {
         setIsLoading(true);
         if (user?.uid) {
+          if (!db) {
+            console.error('Firestore db not initialized');
+            Alert.alert('Error', 'Database connection not initialized');
+            setIsLoading(false);
+            return;
+          }
+          
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             setUserProfile(userDoc.data());

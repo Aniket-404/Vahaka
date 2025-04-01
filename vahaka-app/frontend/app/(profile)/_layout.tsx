@@ -16,12 +16,11 @@ export default function ProfileLayout() {
           fontWeight: '600',
         },
         headerShadowVisible: false,
-        headerBackTitle: 'Back',
+        headerBackTitle: '',
         headerBackVisible: true,
-        headerBackTitleVisible: false,
         headerTitleAlign: 'center',
-        headerLeftContainerStyle: {
-          paddingLeft: 16,
+        contentStyle: {
+          // Removed padding that was causing the blank space
         },
       }}
     >

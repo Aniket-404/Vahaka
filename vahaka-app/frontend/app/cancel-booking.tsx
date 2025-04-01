@@ -52,7 +52,7 @@ export default function CancelBookingScreen() {
     
     try {
       setIsCancelling(true);
-      await cancelBooking(id as string);
+      await cancelBooking(id as string, 'Cancelled by user from app');
       Alert.alert(
         'Booking Cancelled',
         'Your booking has been successfully cancelled.',

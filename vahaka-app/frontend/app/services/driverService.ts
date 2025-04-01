@@ -1,5 +1,5 @@
-import { db } from './firebaseConfig';
-import { collection, doc, getDocs, getDoc, query, where, orderBy, limit, DocumentData } from 'firebase/firestore';
+import { partnerDb } from './firebaseConfig';
+import { collection, doc, getDocs, getDoc, query, where, orderBy, limit, DocumentData, CollectionReference } from 'firebase/firestore';
 
 // Helper function to map trip types to icon names
 function getBadgeIcon(tripType: string): string {
@@ -173,15 +173,34 @@ const MOCK_DRIVERS: Driver[] = [
 ];
 
 class DriverService {
-  private partnersCollection = collection(db, 'partners');
-  private useMockData = false; // Changed to false to use real Firestore data
+  private partnersCollection: CollectionReference;
+  private useMockData = true; // Set to true as fallback in case Firestore isn't initialized
+
+  constructor() {
+    // Check if partnerDb is not null before creating the collection reference
+    if (partnerDb) {
+      this.partnersCollection = collection(partnerDb, 'partners');
+      this.useMockData = false; // Use real data since Firestore is available
+    } else {
+      console.warn('Partner Firestore database is not initialized. Using mock data instead.');
+      // Create a placeholder collection reference that won't be used
+      // This is just to satisfy TypeScript
+      this.partnersCollection = null as unknown as CollectionReference;
+      this.useMockData = true;
+    }
+  }
 
   /**
    * Get all drivers from Firestore partners collection
    */
   async getAllDrivers(): Promise<Driver[]> {
+    // If Firestore isn't initialized, use mock data
+    if (this.useMockData) {
+      console.warn('Using mock driver data instead of Firestore');
+      return MOCK_DRIVERS;
+    }
+
     try {
-      // Skip mock data and use Firestore
       console.log('Fetching all partners from Firestore...');
       const querySnapshot = await getDocs(this.partnersCollection);
       
@@ -219,7 +238,7 @@ class DriverService {
       return drivers;
     } catch (error) {
       console.error('Error fetching partners:', error);
-      return []; // Return empty array instead of mock data
+      return this.useMockData ? MOCK_DRIVERS : []; // Fall back to mock data if needed
     }
   }
 
@@ -227,15 +246,21 @@ class DriverService {
    * Get driver by ID from partners collection
    */
   async getDriverById(id: string): Promise<Driver | null> {
+    // If Firestore isn't initialized, use mock data
+    if (this.useMockData) {
+      console.warn('Using mock driver data instead of Firestore');
+      const mockDriver = MOCK_DRIVERS.find(driver => driver.id === id);
+      return mockDriver || null;
+    }
+
     try {
-      // Skip mock data and use Firestore
       console.log(`Fetching partner with ID: ${id}`);
       const docRef = doc(this.partnersCollection, id);
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
         console.error(`Partner with ID ${id} not found`);
-        return null; // Return null instead of mock data
+        return null;
       }
       
       const data = docSnap.data();
@@ -251,20 +276,17 @@ class DriverService {
       });
       
       // Map Firestore data to driver object
-      const driver = this.mapPartnerToDriver(docSnap.id, data);
-      
-      console.log('Processed driver data:', {
-        id: driver.id,
-        name: driver.name,
-        hasVehicle: driver.vehicle ? 'yes' : 'no',
-        hasBadges: driver.badges && driver.badges.length > 0 ? 'yes' : 'no',
-        hasReviews: driver.reviews && driver.reviews.length > 0 ? 'yes' : 'no'
-      });
-      
-      return driver;
+      return this.mapPartnerToDriver(docSnap.id, data);
     } catch (error) {
       console.error(`Error fetching partner with ID ${id}:`, error);
-      return null; // Return null instead of mock data
+      
+      // If using Firestore but an error occurred, check if a mock driver with this ID exists
+      if (this.useMockData) {
+        const mockDriver = MOCK_DRIVERS.find(driver => driver.id === id);
+        return mockDriver || null;
+      }
+      
+      return null;
     }
   }
 

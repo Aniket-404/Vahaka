@@ -5,19 +5,18 @@ import { Colors } from '@/constants/Colors';
 
 // Create a proper tab bar background component with proper styling
 const TabBarBackground: React.FC = () => {
+  // Always call hooks at the top level, regardless of platform
   const colorScheme = useColorScheme() ?? 'light';
   
-  // On iOS, return an empty view to let the blur effect work
-  if (Platform.OS === 'ios') {
-    return <View style={styles.container} />;
-  }
-  
-  // On Android, we need a solid background
+  // Rather than using early returns, use conditional styling
   return (
     <View 
       style={[
         styles.container, 
-        { backgroundColor: Colors[colorScheme].background }
+        // Only apply background color on Android
+        Platform.OS === 'android' 
+          ? { backgroundColor: Colors[colorScheme].background }
+          : null
       ]} 
     />
   );
@@ -33,6 +32,7 @@ const styles = StyleSheet.create({
 
 export default TabBarBackground;
 
-export function useBottomTabOverflow() {
-  return 0;
-}
+// Don't export unused hooks
+// export function useBottomTabOverflow() {
+//   return 0;
+// }

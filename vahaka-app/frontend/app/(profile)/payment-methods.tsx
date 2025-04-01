@@ -2,35 +2,59 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal, TextInput, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedText, ThemedView } from '../../components/Themed';
-import { getUserPaymentMethods, addPaymentMethod, deletePaymentMethod } from '../services/userService';
+import { getUserPaymentMethods, addPaymentMethod, deletePaymentMethod, updatePaymentMethod } from '../services/userService';
 import { PaymentMethod } from '../types/user';
 import { useAuth } from '../context/auth';
 import { router } from 'expo-router';
 
+// Define payment method type to match the one in userService.ts
+type PaymentMethodType = 'card' | 'upi' | 'bank';
+
 const PaymentMethodsScreen = () => {
-  const { refreshUserData } = useAuth();
+  const { refreshUserData, user } = useAuth();
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [newPaymentMethod, setNewPaymentMethod] = useState({
-    type: 'card',
+    type: 'card' as PaymentMethodType, // Type assertion to ensure it's the correct type
     name: '',
     details: '',
     isDefault: false
   });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingPaymentMethodId, setEditingPaymentMethodId] = useState<string | null>(null);
 
   useEffect(() => {
-    loadPaymentMethods();
-  }, []);
+    // Only attempt to load payment methods if user is authenticated
+    if (user) {
+      loadPaymentMethods();
+    } else {
+      setIsLoading(false);
+      setError('Please log in to view payment methods');
+    }
+  }, [user]);
 
   const loadPaymentMethods = async () => {
     setIsLoading(true);
+    setError(null);
     try {
+      console.log('Loading payment methods for user:', user?.uid);
       const methods = await getUserPaymentMethods();
       setPaymentMethods(methods);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading payment methods:', error);
-      Alert.alert('Error', 'Failed to load payment methods');
+      
+      // Check for Firebase initialization errors
+      if (error.message?.includes('Firebase') || 
+          error.message?.includes('initialization') ||
+          error.message?.includes('app/no-app')) {
+        setError('Firebase is still initializing. Please try again in a moment.');
+      } else if (error.message?.includes('not authenticated')) {
+        setError('You must be logged in to view payment methods');
+      } else {
+        setError('Failed to load payment methods');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -43,20 +67,52 @@ const PaymentMethodsScreen = () => {
     }
 
     try {
-      await addPaymentMethod(newPaymentMethod);
+      if (isEditMode && editingPaymentMethodId) {
+        // Update existing payment method
+        await updatePaymentMethod(editingPaymentMethodId, newPaymentMethod);
+        Alert.alert('Success', 'Payment method updated successfully');
+      } else {
+        // Add new payment method
+        await addPaymentMethod(newPaymentMethod);
+        Alert.alert('Success', 'Payment method added successfully');
+      }
+      
       setModalVisible(false);
+      // Reset the form
       setNewPaymentMethod({
-        type: 'card',
+        type: 'card' as PaymentMethodType,
         name: '',
         details: '',
         isDefault: false
       });
+      setIsEditMode(false);
+      setEditingPaymentMethodId(null);
       loadPaymentMethods();
-      Alert.alert('Success', 'Payment method added successfully');
-    } catch (error) {
-      console.error('Error adding payment method:', error);
-      Alert.alert('Error', 'Failed to add payment method');
+    } catch (error: any) {
+      console.error('Error with payment method:', error);
+      
+      // Check for Firebase initialization errors
+      if (error.message?.includes('Firebase') || 
+          error.message?.includes('initialization') ||
+          error.message?.includes('app/no-app')) {
+        Alert.alert('Error', 'Firebase is still initializing. Please try again in a moment.');
+      } else {
+        Alert.alert('Error', isEditMode ? 'Failed to update payment method' : 'Failed to add payment method');
+      }
     }
+  };
+
+  const handleEditPaymentMethod = (method: PaymentMethod) => {
+    // Set the form values to the selected payment method
+    setNewPaymentMethod({
+      type: method.type as PaymentMethodType,
+      name: method.name,
+      details: method.details,
+      isDefault: method.isDefault
+    });
+    setIsEditMode(true);
+    setEditingPaymentMethodId(method.id);
+    setModalVisible(true);
   };
 
   const handleDeletePaymentMethod = (id: string) => {
@@ -99,7 +155,10 @@ const PaymentMethodsScreen = () => {
 
   const renderPaymentMethod = (method: PaymentMethod) => (
     <View key={method.id} style={styles.paymentMethodCard}>
-      <View style={styles.paymentMethodInfo}>
+      <TouchableOpacity 
+        style={styles.paymentMethodInfo}
+        onPress={() => handleEditPaymentMethod(method)}
+      >
         {getPaymentMethodIcon(method.type)}
         <View style={styles.paymentMethodDetails}>
           <ThemedText style={styles.paymentMethodName}>{method.name}</ThemedText>
@@ -110,7 +169,7 @@ const PaymentMethodsScreen = () => {
             </View>
           )}
         </View>
-      </View>
+      </TouchableOpacity>
       <TouchableOpacity
         onPress={() => handleDeletePaymentMethod(method.id)}
         style={styles.deleteButton}
@@ -130,12 +189,39 @@ const PaymentMethodsScreen = () => {
     </View>
   );
 
+  // Render loading state
+  if (isLoading) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <ThemedText style={styles.loadingText}>Loading payment methods...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <ThemedView style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
+        <ThemedText style={styles.errorTitle}>Error</ThemedText>
+        <ThemedText style={styles.errorText}>{error}</ThemedText>
+        <TouchableOpacity style={styles.retryButton} onPress={loadPaymentMethods}>
+          <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.errorBackButton} onPress={() => router.back()}>
+          <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       {/* Custom Header */}
       <View style={styles.header}>
         <TouchableOpacity 
-          style={styles.backButton}
+          style={styles.headerBackButton}
           onPress={() => router.back()}
         >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
@@ -151,14 +237,9 @@ const PaymentMethodsScreen = () => {
         <View style={styles.content}>
           {/* Saved Cards Section */}
           <View style={styles.section}>
-            <ThemedText style={styles.sectionTitle}>Saved Cards</ThemedText>
+            <ThemedText style={styles.sectionTitle}>Saved Card/UPI</ThemedText>
             
-            {isLoading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#2563EB" />
-                <ThemedText style={styles.loadingText}>Loading payment methods...</ThemedText>
-              </View>
-            ) : paymentMethods.length > 0 ? (
+            {paymentMethods.length > 0 ? (
               paymentMethods.map(renderPaymentMethod)
             ) : (
               renderEmptyList()
@@ -171,7 +252,18 @@ const PaymentMethodsScreen = () => {
       <View style={styles.bottomBar}>
         <TouchableOpacity 
           style={styles.addButton}
-          onPress={() => setModalVisible(true)}
+          onPress={() => {
+            // Reset form for adding new payment method
+            setNewPaymentMethod({
+              type: 'card' as PaymentMethodType,
+              name: '',
+              details: '',
+              isDefault: false
+            });
+            setIsEditMode(false);
+            setEditingPaymentMethodId(null);
+            setModalVisible(true);
+          }}
         >
           <Ionicons name="add-circle-outline" size={24} color="#FFFFFF" />
           <ThemedText style={styles.addButtonText}>Add Payment Method</ThemedText>
@@ -182,17 +274,25 @@ const PaymentMethodsScreen = () => {
         animationType="slide"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={() => {
+          setModalVisible(false);
+          setIsEditMode(false);
+          setEditingPaymentMethodId(null);
+        }}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <ThemedText style={styles.modalTitle}>Add Payment Method</ThemedText>
+              <ThemedText style={styles.modalTitle}>
+                {isEditMode ? 'Edit Payment Method' : 'Add Payment Method'}
+              </ThemedText>
               <TouchableOpacity
                 onPress={() => {
                   setModalVisible(false);
+                  setIsEditMode(false);
+                  setEditingPaymentMethodId(null);
                   setNewPaymentMethod({
-                    type: 'card',
+                    type: 'card' as PaymentMethodType,
                     name: '',
                     details: '',
                     isDefault: false
@@ -213,7 +313,7 @@ const PaymentMethodsScreen = () => {
                       styles.paymentTypeButton,
                       newPaymentMethod.type === 'card' && styles.paymentTypeSelected
                     ]}
-                    onPress={() => setNewPaymentMethod(prev => ({ ...prev, type: 'card' }))}
+                    onPress={() => setNewPaymentMethod(prev => ({ ...prev, type: 'card' as PaymentMethodType }))}
                   >
                     <Ionicons name="card-outline" size={20} color={newPaymentMethod.type === 'card' ? '#2563EB' : '#64748B'} />
                     <ThemedText style={[
@@ -227,7 +327,7 @@ const PaymentMethodsScreen = () => {
                       styles.paymentTypeButton,
                       newPaymentMethod.type === 'bank' && styles.paymentTypeSelected
                     ]}
-                    onPress={() => setNewPaymentMethod(prev => ({ ...prev, type: 'bank' }))}
+                    onPress={() => setNewPaymentMethod(prev => ({ ...prev, type: 'bank' as PaymentMethodType }))}
                   >
                     <Ionicons name="business-outline" size={20} color={newPaymentMethod.type === 'bank' ? '#2563EB' : '#64748B'} />
                     <ThemedText style={[
@@ -241,7 +341,7 @@ const PaymentMethodsScreen = () => {
                       styles.paymentTypeButton,
                       newPaymentMethod.type === 'upi' && styles.paymentTypeSelected
                     ]}
-                    onPress={() => setNewPaymentMethod(prev => ({ ...prev, type: 'upi' }))}
+                    onPress={() => setNewPaymentMethod(prev => ({ ...prev, type: 'upi' as PaymentMethodType }))}
                   >
                     <Ionicons name="phone-portrait-outline" size={20} color={newPaymentMethod.type === 'upi' ? '#2563EB' : '#64748B'} />
                     <ThemedText style={[
@@ -295,7 +395,9 @@ const PaymentMethodsScreen = () => {
               style={styles.addMethodButton}
               onPress={handleAddPaymentMethod}
             >
-              <ThemedText style={styles.addMethodButtonText}>Add Payment Method</ThemedText>
+              <ThemedText style={styles.addMethodButtonText}>
+                {isEditMode ? 'Update Payment Method' : 'Add Payment Method'}
+              </ThemedText>
             </TouchableOpacity>
           </View>
         </View>
@@ -307,26 +409,26 @@ const PaymentMethodsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F9FAFB',
   },
   header: {
+    marginTop: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 60 : 50,
-    paddingBottom: 10,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
+    paddingTop: Platform.OS === 'ios' ? 55 : 20,
+    paddingHorizontal: 16,
     borderBottomColor: '#E5E7EB',
   },
-  backButton: {
-    padding: 8,
+  headerBackButton: {
+    marginRight: 8,
+    paddingVertical: 30,
+    paddingHorizontal: 2,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
-    marginLeft: 8,
   },
   scrollView: {
     flex: 1,
@@ -351,11 +453,49 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 48,
+    padding: 20,
   },
   loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
     marginTop: 16,
-    color: '#64748B',
+    color: '#EF4444',
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  errorBackButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  backButtonText: {
+    color: '#2563EB',
     fontSize: 16,
   },
   paymentMethodCard: {
@@ -373,9 +513,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   paymentMethodInfo: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
   paymentMethodDetails: {
     marginLeft: 12,
@@ -559,6 +699,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  modalBackButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
   },
 });
 

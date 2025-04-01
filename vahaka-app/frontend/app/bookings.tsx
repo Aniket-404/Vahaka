@@ -7,13 +7,14 @@ import ThemedText from '@/components/ThemedText';
 import ThemedView from '@/components/ThemedView';
 import { useAuth } from './context/auth';
 import bookingService, { getUpcomingUserBookings, getPastUserBookings, cancelBooking } from './services/bookingService';
+import { Booking as UserBooking } from './types/user';
 
-// Booking type definition
+// Local Booking interface that extends the imported one with stricter types for our UI
 interface Booking {
   id: string;
   startDate: Date;
   endDate: Date;
-  duration: number;
+  duration?: number;  // Make duration optional to match the type in user.ts
   totalAmount: number;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   driverDetails: {
@@ -24,10 +25,11 @@ interface Booking {
       model?: string; 
       color?: string;
       plateNumber?: string;
-      year?: string;
+      year?: string | number;  // Accept both string and number for year
     };
   };
   paymentStatus: 'paid' | 'unpaid';
+  rating?: number; // Add rating property that was missing
 }
 
 export default function BookingsScreen() {
@@ -54,7 +56,7 @@ export default function BookingsScreen() {
     }
     
     try {
-      let fetchedBookings;
+      let fetchedBookings: UserBooking[];
       
       if (activeTab === 'upcoming') {
         fetchedBookings = await getUpcomingUserBookings(user.uid);
@@ -62,7 +64,42 @@ export default function BookingsScreen() {
         fetchedBookings = await getPastUserBookings(user.uid);
       }
       
-      setBookings(fetchedBookings);
+      // Convert each booking to our local Booking type with proper Date objects
+      const processedBookings: Booking[] = fetchedBookings.map(booking => {
+        // Process vehicle object if it exists and is an object
+        let vehicle = booking.driverDetails?.vehicle;
+        if (typeof vehicle === 'object' && vehicle !== null) {
+          // Create a new vehicle object with properly typed properties
+          vehicle = {
+            make: vehicle.make,
+            model: vehicle.model,
+            color: vehicle.color,
+            plateNumber: vehicle.plateNumber,
+            year: vehicle.year // Can be string or number
+          };
+        } else {
+          // If not an object, ensure it's a string
+          vehicle = String(vehicle || 'Not specified');
+        }
+
+        return {
+          ...booking,
+          startDate: new Date(booking.startDate),
+          endDate: new Date(booking.endDate),
+          status: (booking.status || 'pending') as 'pending' | 'confirmed' | 'completed' | 'cancelled',
+          paymentStatus: (booking.paymentStatus || 'unpaid') as 'paid' | 'unpaid',
+          driverDetails: {
+            name: booking.driverDetails?.name || booking.driverName || 'Unknown Driver',
+            phone: booking.driverDetails?.phone || 'Not available',
+            vehicle: vehicle
+          },
+          duration: booking.duration || 1,
+          totalAmount: booking.totalAmount || 0,
+          rating: booking.rating
+        };
+      });
+      
+      setBookings(processedBookings);
       setError(null);
     } catch (error) {
       console.error('Error fetching bookings:', error);
@@ -201,7 +238,7 @@ export default function BookingsScreen() {
         <View style={styles.detailItem}>
           <Ionicons name="time-outline" size={16} color="#64748B" />
           <ThemedText style={styles.detailText}>
-            {item.duration} {item.duration === 1 ? 'day' : 'days'}
+            {item.duration || 1} {(item.duration || 1) === 1 ? 'day' : 'days'}
           </ThemedText>
         </View>
         

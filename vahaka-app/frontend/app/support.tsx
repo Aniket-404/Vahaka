@@ -77,7 +77,9 @@ export default function SupportScreen() {
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.headerContainer}>
-          <Ionicons name="headset" size={60} color="#2563EB" />
+          <View style={styles.iconContainer}>
+            <Ionicons name="headset" size={60} color="#2563EB" />
+          </View>
           <ThemedText style={styles.headerTitle}>How can we help?</ThemedText>
           <ThemedText style={styles.headerSubtitle}>
             Our support team is here to assist you with any questions or issues.
@@ -167,11 +169,14 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     alignItems: 'center',
-    paddingVertical: 24,
+    paddingVertical: 30,
     paddingHorizontal: 20,
     backgroundColor: '#EFF6FF',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+  },
+  iconContainer: {
+    paddingTop: 20,
   },
   headerTitle: {
     fontSize: 24,

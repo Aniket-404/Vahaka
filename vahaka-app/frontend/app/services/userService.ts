@@ -1,7 +1,7 @@
-import { getAuth } from 'firebase/auth';
+import { getAuth, Auth } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, writeBatch, query, where, documentId } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db } from './firebaseConfig';
+import { db, auth } from './firebaseConfig';
 import { User, UserProfile, Booking, PaymentMethod } from '../types/user';
 import bookingService, { getBooking } from './bookingService';
 
@@ -21,17 +21,28 @@ interface PaymentMethodData {
   isDefault: boolean;
 }
 
+// Helper function to safely get auth instance
+const safeGetAuth = (): Auth => {
+  try {
+    return auth; // Use the imported auth instance from firebaseConfig
+  } catch (error) {
+    console.error('Error getting auth instance:', error);
+    throw new Error('Firebase authentication is not initialized');
+  }
+};
+
 /**
  * Get all payment methods for the current user
  */
 export const getUserPaymentMethods = async (): Promise<PaymentMethod[]> => {
   try {
-    const auth = getAuth();
-    if (!auth.currentUser) {
+    // Use our safe auth instance
+    const currentAuth = safeGetAuth();
+    if (!currentAuth.currentUser) {
       throw new Error('User not authenticated');
     }
 
-    const userId = auth.currentUser.uid;
+    const userId = currentAuth.currentUser.uid;
     const userDocRef = doc(db, 'users', userId);
     const paymentMethodsCollectionRef = collection(userDocRef, 'paymentMethods');
     const paymentMethodsSnapshot = await getDocs(paymentMethodsCollectionRef);
@@ -65,12 +76,12 @@ export const getUserPaymentMethods = async (): Promise<PaymentMethod[]> => {
  */
 export const addPaymentMethod = async (paymentMethodData: PaymentMethodData): Promise<string> => {
   try {
-    const auth = getAuth();
-    if (!auth.currentUser) {
+    const currentAuth = safeGetAuth();
+    if (!currentAuth.currentUser) {
       throw new Error('User not authenticated');
     }
 
-    const userId = auth.currentUser.uid;
+    const userId = currentAuth.currentUser.uid;
     const userDocRef = doc(db, 'users', userId);
     
     // If this is set as default, update any existing default payment methods
@@ -108,12 +119,12 @@ export const addPaymentMethod = async (paymentMethodData: PaymentMethodData): Pr
  */
 export const deletePaymentMethod = async (paymentMethodId: string): Promise<void> => {
   try {
-    const auth = getAuth();
-    if (!auth.currentUser) {
+    const currentAuth = safeGetAuth();
+    if (!currentAuth.currentUser) {
       throw new Error('User not authenticated');
     }
 
-    const userId = auth.currentUser.uid;
+    const userId = currentAuth.currentUser.uid;
     const userDocRef = doc(db, 'users', userId);
     const paymentMethodRef = doc(collection(userDocRef, 'paymentMethods'), paymentMethodId);
     
@@ -150,13 +161,13 @@ export const deletePaymentMethod = async (paymentMethodId: string): Promise<void
  */
 export const getUserBookings = async (): Promise<Booking[]> => {
   try {
-    const currentUser = getAuth().currentUser;
-    if (!currentUser) {
+    const currentAuth = safeGetAuth();
+    if (!currentAuth.currentUser) {
       throw new Error('User not authenticated');
     }
     
     // Use bookingService to get bookings for the current user
-    return await bookingService.getUserBookings(currentUser.uid);
+    return await bookingService.getUserBookings(currentAuth.currentUser.uid);
   } catch (error) {
     console.error('Error fetching user bookings:', error);
     throw error;
@@ -168,12 +179,12 @@ export const getUserBookings = async (): Promise<Booking[]> => {
  */
 export const uploadProfileImage = async (imageUri: string): Promise<string> => {
   try {
-    const auth = getAuth();
-    if (!auth.currentUser) {
+    const currentAuth = safeGetAuth();
+    if (!currentAuth.currentUser) {
       throw new Error('User not authenticated');
     }
 
-    const userId = auth.currentUser.uid;
+    const userId = currentAuth.currentUser.uid;
     
     // Create a storage reference
     const storage = getStorage();
@@ -207,12 +218,12 @@ export const uploadProfileImage = async (imageUri: string): Promise<string> => {
  */
 export const updateUserProfile = async (profileData: any): Promise<void> => {
   try {
-    const auth = getAuth();
-    if (!auth.currentUser) {
+    const currentAuth = safeGetAuth();
+    if (!currentAuth.currentUser) {
       throw new Error('User not authenticated');
     }
 
-    const userId = auth.currentUser.uid;
+    const userId = currentAuth.currentUser.uid;
     const userDocRef = doc(db, 'users', userId);
     
     await updateDoc(userDocRef, {
@@ -235,8 +246,8 @@ export const updateUserProfile = async (profileData: any): Promise<void> => {
  */
 export const getBookingById = async (bookingId: string): Promise<Booking> => {
   try {
-    const auth = getAuth();
-    if (!auth.currentUser) {
+    const currentAuth = safeGetAuth();
+    if (!currentAuth.currentUser) {
       throw new Error('User not authenticated');
     }
 
@@ -249,7 +260,7 @@ export const getBookingById = async (bookingId: string): Promise<Booking> => {
 
     return booking;
   } catch (error) {
-    console.error('Error fetching booking by ID:', error);
+    console.error('Error fetching booking:', error);
     throw error;
   }
 };
@@ -327,6 +338,53 @@ export const getUserProfile = async (userId: string): Promise<UserProfile> => {
     };
   } catch (error) {
     console.error('Error fetching user profile:', error);
+    throw error;
+  }
+};
+
+/**
+ * Update an existing payment method
+ */
+export const updatePaymentMethod = async (paymentMethodId: string, paymentMethodData: PaymentMethodData): Promise<void> => {
+  try {
+    const currentAuth = safeGetAuth();
+    if (!currentAuth.currentUser) {
+      throw new Error('User not authenticated');
+    }
+
+    const userId = currentAuth.currentUser.uid;
+    const userDocRef = doc(db, 'users', userId);
+    const paymentMethodRef = doc(collection(userDocRef, 'paymentMethods'), paymentMethodId);
+    
+    // Check if the payment method exists
+    const paymentMethodSnapshot = await getDoc(paymentMethodRef);
+    if (!paymentMethodSnapshot.exists()) {
+      throw new Error('Payment method not found');
+    }
+    
+    // If this is set as default, update any existing default payment methods
+    if (paymentMethodData.isDefault && !paymentMethodSnapshot.data().isDefault) {
+      const paymentMethodsCollectionRef = collection(userDocRef, 'paymentMethods');
+      const defaultMethodsQuery = query(
+        paymentMethodsCollectionRef,
+        where('isDefault', '==', true)
+      );
+      
+      const defaultMethodsSnapshot = await getDocs(defaultMethodsQuery);
+      
+      // Batch update to remove default status from other payment methods
+      const batch = writeBatch(db);
+      defaultMethodsSnapshot.forEach((docSnapshot) => {
+        batch.update(docSnapshot.ref, { isDefault: false });
+      });
+      
+      await batch.commit();
+    }
+    
+    // Update the payment method
+    await updateDoc(paymentMethodRef, paymentMethodData);
+  } catch (error) {
+    console.error('Error updating payment method:', error);
     throw error;
   }
 };

@@ -34,7 +34,15 @@ export default function EditProfileScreen() {
 
   const handleSave = async () => {
     try {
-      if (!user?.uid) return;
+      if (!user?.uid) {
+        Alert.alert('Error', 'User not authenticated');
+        return;
+      }
+      
+      if (!db) {
+        Alert.alert('Error', 'Database connection not initialized');
+        return;
+      }
 
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, {

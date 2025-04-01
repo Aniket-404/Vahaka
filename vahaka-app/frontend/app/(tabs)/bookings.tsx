@@ -7,13 +7,14 @@ import ThemedText from '@/components/ThemedText';
 import ThemedView from '@/components/ThemedView';
 import { useAuth } from '../context/auth';
 import bookingService, { getUpcomingUserBookings, getPastUserBookings, cancelBooking } from '../services/bookingService';
+import { Booking as UserBooking } from '../types/user';
 
-// Booking type definition
+// Local Booking type definition that matches the one from types/user.ts
 interface Booking {
   id: string;
   startDate: string | Date;
   endDate: string | Date;
-  duration: number;
+  duration?: number; // Make duration optional to match the type in user.ts
   totalAmount: number;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   driverDetails: {
@@ -55,7 +56,7 @@ export default function BookingsScreen() {
     }
     
     try {
-      let fetchedBookings;
+      let fetchedBookings: UserBooking[];
       
       if (activeTab === 'upcoming') {
         fetchedBookings = await getUpcomingUserBookings(user.uid);
@@ -63,7 +64,8 @@ export default function BookingsScreen() {
         fetchedBookings = await getPastUserBookings(user.uid);
       }
       
-      setBookings(fetchedBookings);
+      // Convert UserBooking to local Booking type
+      setBookings(fetchedBookings as unknown as Booking[]);
       setError(null);
     } catch (error) {
       console.error('Error fetching bookings:', error);
@@ -202,7 +204,7 @@ export default function BookingsScreen() {
         <View style={styles.detailItem}>
           <Ionicons name="time-outline" size={16} color="#64748B" />
           <ThemedText style={styles.detailText}>
-            {item.duration} {item.duration === 1 ? 'day' : 'days'}
+            {item.duration ?? 1} {(item.duration ?? 1) === 1 ? 'day' : 'days'}
           </ThemedText>
         </View>
         
