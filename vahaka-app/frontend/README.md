@@ -96,3 +96,52 @@ Contributions to Vahaka are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License.
+
+## Firebase Setup
+
+### Authentication
+1. Create a new Firebase project in the [Firebase Console](https://console.firebase.google.com/)
+2. Enable Email/Password authentication in the Authentication section
+3. Copy your Firebase config values to `.env.local` file
+
+### Firestore Database
+1. Create a Firestore database in a region close to your users
+2. Configure Security Rules:
+   - Go to the Firestore Database section in the Firebase Console
+   - Click on the "Rules" tab
+   - Copy the rules from `firestore.rules` file in this project
+   - Click "Publish" to apply the rules
+
+### Environment Variables
+Create a `.env.local` file in the root directory with the following variables:
+
+```
+# App Firebase Config (User App)
+EXPO_PUBLIC_APP_FIREBASE_API_KEY=your_app_api_key
+EXPO_PUBLIC_APP_FIREBASE_AUTH_DOMAIN=your_app_auth_domain
+EXPO_PUBLIC_APP_FIREBASE_PROJECT_ID=your_app_project_id
+EXPO_PUBLIC_APP_FIREBASE_STORAGE_BUCKET=your_app_storage_bucket
+EXPO_PUBLIC_APP_FIREBASE_MESSAGING_SENDER_ID=your_app_messaging_sender_id
+EXPO_PUBLIC_APP_FIREBASE_APP_ID=your_app_app_id
+
+# Partner Firebase Config (Driver Data)
+EXPO_PUBLIC_FIREBASE_API_KEY=partner_api_key
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=partner_auth_domain
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=partner_project_id
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=partner_storage_bucket
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=partner_messaging_sender_id
+EXPO_PUBLIC_FIREBASE_APP_ID=partner_app_id
+```
+
+## Troubleshooting
+
+### Firebase Authentication Issues
+- **API Key Not Valid**: Make sure your Firebase API key is correct in `.env.local`
+- **Firebase App Already Exists**: The app may try to initialize Firebase multiple times. This is handled automatically.
+
+### Firestore Permission Errors
+If you see "Missing or insufficient permissions" errors:
+1. Check Firestore security rules in the Firebase Console
+2. Make sure rules allow read/write for authenticated users
+3. Verify the user is properly authenticated before accessing Firestore
+4. Reference the `firestore.rules` file for the correct rule configuration

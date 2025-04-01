@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, Image, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity, Image, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar as RNStatusBar } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -33,19 +33,21 @@ export default function LoginScreen() {
     } catch (error: any) {
       console.error('Login error:', error);
       
-      // Handle specific Firebase error codes
-      if (error.code === 'auth/user-not-found') {
+      // Check both error.code (Firebase original errors) and error.message (our custom errors)
+      if (error.code === 'auth/user-not-found' || error.message.includes('No account found')) {
         setErrorMessage('No account found with this email. Please check or sign up.');
-      } else if (error.code === 'auth/wrong-password') {
+      } else if (error.code === 'auth/wrong-password' || error.message.includes('Invalid email or password')) {
         setErrorMessage('Incorrect password. Please try again or reset your password.');
-      } else if (error.code === 'auth/invalid-email') {
+      } else if (error.code === 'auth/invalid-email' || error.message.includes('valid email')) {
         setErrorMessage('Invalid email format. Please check and try again.');
-      } else if (error.code === 'auth/user-disabled') {
+      } else if (error.code === 'auth/user-disabled' || error.message.includes('disabled')) {
         setErrorMessage('This account has been disabled. Please contact support.');
-      } else if (error.code === 'auth/too-many-requests') {
+      } else if (error.code === 'auth/too-many-requests' || error.message.includes('too many')) {
         setErrorMessage('Too many failed attempts. Please try again later or reset your password.');
+      } else if (error.message.includes('not registered in this app')) {
+        setErrorMessage('Your account is registered in a different app. Please use the correct app.');
       } else {
-        setErrorMessage(error.message || 'Login failed');
+        setErrorMessage(error.message || 'Login failed. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -101,7 +103,7 @@ export default function LoginScreen() {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  autoCompleteType="email"
+                  autoComplete="email"
                 />
               </View>
             </View>
@@ -168,7 +170,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0,
+    paddingTop: Platform.OS === 'ios' ? 44 : RNStatusBar.currentHeight || 0,
     paddingBottom: 60,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
@@ -177,6 +179,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
   },
   logo: {
     width: 80,

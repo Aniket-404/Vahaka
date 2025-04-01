@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar as RNStatusBar } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -22,35 +22,20 @@ export default function SignupScreen() {
   const router = useRouter();
   
   const handleSignup = async () => {
-    if (!name || !email || !password || !confirmPassword) {
-      setErrorMessage('Please fill in all fields');
-      return;
-    }
-    
-    if (password !== confirmPassword) {
-      setErrorMessage('Passwords do not match');
-      return;
-    }
+    if (!validateForm()) return;
     
     setIsLoading(true);
     setErrorMessage('');
     
     try {
-      await signUp(email, password, name);
-      // Navigation will be handled by the auth guard
+      await signUp(email.trim(), password, name.trim());
+      router.replace('/');
     } catch (error: any) {
       console.error('Signup error:', error);
       
-      // Handle specific Firebase error codes
-      if (error.code === 'auth/email-already-in-use') {
-        setErrorMessage('This email is already registered. Please try logging in or use a different email.');
-      } else if (error.code === 'auth/weak-password') {
-        setErrorMessage('Password is too weak. Please use a stronger password.');
-      } else if (error.code === 'auth/invalid-email') {
-        setErrorMessage('Invalid email address. Please check and try again.');
-      } else {
-        setErrorMessage(error.message || 'Signup failed');
-      }
+      // Display the error message directly from our auth context
+      // which has already been formatted for user display
+      setErrorMessage(error.message || 'Signup failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -58,6 +43,20 @@ export default function SignupScreen() {
   
   const navigateToLogin = () => {
     router.push('/(auth)/login');
+  };
+  
+  const validateForm = () => {
+    if (!name || !email || !password || !confirmPassword) {
+      setErrorMessage('Please fill in all fields');
+      return false;
+    }
+    
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match');
+      return false;
+    }
+    
+    return true;
   };
   
   return (
@@ -202,7 +201,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
   },
   headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0,
+    paddingTop: Platform.OS === 'ios' ? 44 : RNStatusBar.currentHeight || 0,
     paddingBottom: 60,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
@@ -211,6 +210,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
   },
   logo: {
     width: 80,
