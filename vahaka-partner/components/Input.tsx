@@ -94,9 +94,10 @@ export const Input: React.FC<InputProps> = ({
         <TextInput
           style={[
             styles.input,
-            leftIcon && styles.inputWithLeftIcon,
-            (rightIcon || secureTextEntry) && styles.inputWithRightIcon,
-            multiline && styles.multiline,
+            leftIcon ? styles.inputWithLeftIcon : null,
+            (rightIcon || secureTextEntry) ? styles.inputWithRightIcon : null,
+            multiline ? styles.multiline : null,
+            secureTextEntry ? styles.passwordInput : null,
             inputStyle,
           ]}
           placeholder={placeholder}
@@ -115,12 +116,15 @@ export const Input: React.FC<InputProps> = ({
         
         {secureTextEntry && (
           <TouchableOpacity
-            style={styles.rightIcon}
+            style={styles.eyeButton}
             onPress={togglePasswordVisibility}
+            activeOpacity={0.7}
           >
-            <Text style={styles.eyeIcon}>
-              {isPasswordVisible ? '👁️' : '👁️‍🗨️'}
-            </Text>
+            <View style={styles.eyeButtonInner}>
+              <Text style={styles.eyeButtonText}>
+                {isPasswordVisible ? 'HIDE' : 'SHOW'}
+              </Text>
+            </View>
           </TouchableOpacity>
         )}
         
@@ -199,8 +203,26 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     marginTop: SPACING.xs,
   },
-  eyeIcon: {
-    fontSize: FONT_SIZES.lg,
-    color: COLORS.textSecondary,
+  eyeButton: {
+    position: 'absolute',
+    right: SPACING.xs,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  eyeButtonInner: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  eyeButtonText: {
+    color: COLORS.surface,
+    fontFamily: FONTS.medium,
+    fontSize: FONT_SIZES.xs,
+  },
+  passwordInput: {
+    paddingRight: 80, // Make space for the toggle button
   },
 }); 

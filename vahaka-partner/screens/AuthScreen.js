@@ -17,6 +17,7 @@ import { auth } from '../services/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { db } from '../services/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { COLORS } from '../constants/colors';
 
 export default function AuthScreen({ navigation }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -28,6 +29,7 @@ export default function AuthScreen({ navigation }) {
     phone: '',
     name: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -229,13 +231,29 @@ export default function AuthScreen({ navigation }) {
 
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your password"
-            value={formData.password}
-            onChangeText={(value) => handleInputChange('password', value)}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Enter your password"
+              value={formData.password}
+              onChangeText={(value) => handleInputChange('password', value)}
+              secureTextEntry={!showPassword}
+              autoCapitalize="none"
+            />
+            <TouchableOpacity
+              style={styles.passwordToggle}
+              onPress={() => setShowPassword(!showPassword)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.eyeIconBackground}>
+                <FontAwesome5 
+                  name={showPassword ? 'eye-slash' : 'eye'} 
+                  size={18} 
+                  color={"#64748B"}
+                />
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {isLogin && (
@@ -290,7 +308,7 @@ export default function AuthScreen({ navigation }) {
         >
           <View style={styles.header}>
             <FontAwesome5 name="car" size={40} color="#2563EB" />
-            <Text style={styles.title}>Vahaka Partner</Text>
+            <Text style={styles.title}>Vahak Partner</Text>
             <Text style={styles.subtitle}>
               {isForgotPassword ? 'Reset Your Password' : 
                 isLogin ? 'Welcome back!' : 'Create your account'}
@@ -424,5 +442,35 @@ const styles = StyleSheet.create({
     color: '#2563EB',
     fontSize: 14,
     fontWeight: '500',
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    backgroundColor: COLORS.surface,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    fontSize: 16,
+    paddingHorizontal: 16,
+    paddingRight: 55,
+    paddingVertical: 12,
+  },
+  passwordToggle: {
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 8,
+    zIndex: 10,
+  },
+  eyeIconBackground: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    borderRadius: 20,
+    height: 35,
+    justifyContent: 'center',
+    width: 35,
   },
 }); 
