@@ -17,7 +17,7 @@
       "translucent": false,
       "barStyle": "light-content"
     },
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
