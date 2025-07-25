@@ -1,0 +1,267 @@
+<context>
+# Overview  
+Vahaka Customer App is a comprehensive, enterprise-grade mobile application built with React Native/Expo that serves as a sophisticated marketplace connecting passengers with verified professional drivers for diverse transportation needs. The platform revolutionizes the traditional driver booking experience by providing an intelligent, user-centric interface for discovering, evaluating, booking, and managing specialized driver services across multiple trip categories including Business travel, Weekly commutes, Urgent transportation, and Outstation journeys.
+
+Problem Statement: The current transportation landscape suffers from significant gaps in specialized driver services. Traditional taxi services lack professionalism and reliability, while existing ride-sharing platforms fail to cater to specific business needs, long-term arrangements, or specialized trip requirements. Users face challenges in finding verified, professional drivers who can meet their exact specifications regarding pricing transparency, service quality, scheduling flexibility, and specialized expertise for different trip types. Additionally, the lack of comprehensive driver profiles, transparent pricing models, and reliable booking systems creates uncertainty and dissatisfaction among users seeking premium transportation services.
+
+Target Audience: 
+- Business executives and professionals requiring reliable, punctual corporate travel with professional drivers
+- Corporate teams needing consistent transportation for business meetings, airport transfers, and client visits
+- Individuals and families needing reliable weekly or regular commute drivers for consistent routes
+- Frequent travelers requiring specialized outstation and long-distance transportation services
+- Professionals seeking urgent and immediate transportation services with guaranteed availability
+- Premium users preferring verified professional drivers over traditional ride-sharing services
+- Event organizers requiring coordinated transportation for groups and special occasions
+- International travelers needing local drivers with language capabilities and area expertise
+
+Value Proposition: Vahaka delivers a curated, premium marketplace of rigorously verified professional drivers with complete transparency in pricing, specialized expertise across multiple trip categories, comprehensive performance reviews and ratings, flexible booking options with advanced scheduling, and enterprise-grade reliability. The platform ensures professional, dependable transportation services through intelligent matching algorithms, real-time availability tracking, secure payment processing, and comprehensive customer support, positioning itself as the premier choice for users who value quality, reliability, and professional service over commodity transportation.
+
+# Core Features  
+
+1. Advanced User Authentication & Profile Management
+- What it does: Enterprise-grade secure user registration, multi-factor authentication, and comprehensive profile management system with advanced privacy controls
+- Why it's important: Ensures maximum data security, creates personalized user experiences, builds platform trust, and maintains compliance with data protection regulations
+- How it works: Firebase Authentication with email/password, Google SSO, and optional biometric authentication for enhanced security, comprehensive user profile creation with personal information, preferences, and travel patterns, professional profile photo upload with automatic optimization and privacy controls, advanced account settings including notification preferences, privacy settings, payment method management, and two-factor authentication setup, emergency contact information management, and travel preference customization
+
+2. Intelligent Driver Discovery & Advanced Search
+- What it does: Sophisticated driver browsing experience with AI-powered filtering, intelligent recommendations, and comprehensive search capabilities
+- Why it's important: Enables users to efficiently find drivers that precisely match their specific needs, preferences, and quality standards
+- How it works: Dynamic grid and list views of available drivers with high-resolution photos and comprehensive information cards, advanced real-time filtering by multiple criteria including trip type specialization (Business, Weekly, Urgent, Outstation), location proximity, price range, rating thresholds, experience levels, and availability windows, intelligent search functionality supporting driver name, location, vehicle type, and specialized skills, sophisticated sorting algorithms by rating, competitive pricing, verified experience, customer reviews, and real-time availability, AI-powered driver recommendations based on user history and preferences
+
+3. Comprehensive Driver Profile & Detailed Information
+- What it does: Extensive driver information display with complete professional background, verification status, and performance analytics
+- Why it's important: Builds user confidence, enables informed decision-making, and ensures transparency in driver selection process
+- How it works: Professional high-quality driver photos and comprehensive vehicle image galleries, detailed rating and review system with categorized feedback (punctuality, professionalism, vehicle condition, driving skill), comprehensive experience metrics including total trips, years of experience, and specialization areas, detailed vehicle information including make, model, year, color, license plate, insurance status, and safety features, verified language proficiency indicators with communication skill ratings, specialized certification badges for different trip types and expertise areas, background verification status with completed checks display, pricing transparency with hourly rates, daily rates, and special service charges
+
+4. Intelligent Smart Booking System
+- What it does: Sophisticated booking interface with advanced date selection, intelligent duration calculation, dynamic pricing, and automated confirmation workflows
+- Why it's important: Serves as the core transactional functionality enabling seamless connection between users and drivers while ensuring optimal user experience
+- How it works: Interactive calendar interface with availability indicators, blackout dates, and optimal booking suggestions, advanced duration calculation supporting multi-day bookings with automatic break time calculations, real-time dynamic pricing with transparent breakdown including base rates, distance charges, time-based pricing, and additional service fees, intelligent booking confirmation system with immediate driver notification and acceptance tracking, automated booking workflows with reminder notifications, confirmation emails, and calendar integration, booking modification capabilities with change fee calculations and availability checking
+
+5. Comprehensive Payment Management System
+- What it does: Enterprise-grade payment system supporting multiple payment methods, currencies, and advanced financial features
+- Why it's important: Ensures secure, convenient transactions while providing users with flexible payment options and complete financial transparency
+- How it works: Support for multiple payment methods including Credit/Debit Cards (Visa, MasterCard, American Express), UPI payments, Bank transfers, digital wallets, and emerging payment technologies, secure payment method storage with tokenization and PCI DSS compliance, intelligent default payment method selection with backup payment options, comprehensive payment history with detailed transaction records, search capabilities, and export functionality, automated refund processing for cancellations with transparent fee structures, recurring payment setup for weekly bookings, expense reporting tools for business users, and integration with popular accounting software
+
+6. Advanced Booking Management & Comprehensive History
+- What it does: Complete booking lifecycle management from initial creation through completion with comprehensive tracking and historical analysis
+- Why it's important: Provides users with complete control over their transportation arrangements and valuable insights into their travel patterns
+- How it works: Real-time upcoming bookings dashboard with detailed information, driver contact details, and trip status tracking, comprehensive past bookings history with advanced search and filtering capabilities by date range, driver, trip type, and location, flexible booking modification options including date changes, driver switching, and service upgrades with automatic price adjustments, real-time booking status updates with push notifications at each stage of the journey, comprehensive digital receipts and invoicing with expense categorization and tax information, trip analytics including spending patterns, frequently used routes, and preferred drivers
+
+7. Advanced Rating & Review System
+- What it does: Sophisticated multi-dimensional feedback system for rating drivers and sharing detailed experiences with community validation
+- Why it's important: Maintains high service quality standards, helps other users make informed decisions, and provides drivers with constructive feedback for improvement
+- How it works: Advanced 5-star rating system with granular sub-categories (punctuality, professionalism, vehicle condition, driving skill, communication), comprehensive review text with character limits and spam detection, photo upload capabilities for trip experiences with automatic moderation, driver response system allowing professional replies to reviews, community-driven review validation with helpful/unhelpful voting, review moderation and reporting system with abuse prevention, aggregated ratings and performance statistics with trend analysis
+
+8. Advanced Communication & Comprehensive Support
+- What it does: Multi-channel communication system between users and drivers/support with emergency capabilities and 24/7 assistance
+- Why it's important: Ensures seamless trip coordination, immediate issue resolution, and user safety throughout the entire journey experience
+- How it works: End-to-end encrypted in-app messaging with drivers including real-time chat, voice messages, and file sharing, emergency contact features with one-touch emergency services and location sharing, 24/7 multilingual customer support through live chat, phone, and email channels, comprehensive FAQ and help documentation with search functionality and video tutorials, advanced ticket-based support system with priority levels and escalation procedures, live tracking and communication during trips with real-time updates and notifications
+
+# User Experience  
+
+Detailed User Personas:
+
+1. Corporate Executive (Primary Persona - 40% of user base)
+- Demographics: Age 28-45, Income $80K-200K annually, Education: Graduate degree, Location: Major metropolitan areas
+- Professional Profile: Senior managers, directors, consultants, business owners requiring frequent business travel
+- Technology Comfort: High, uses premium smartphones and business applications regularly
+- Transportation Needs: Reliable, professional drivers for business meetings, client visits, airport transfers, and corporate events
+- Current Pain Points: Unprofessional driver behavior, unreliable service timing, lack of business-appropriate vehicles, inconsistent quality, poor communication, hidden fees
+- Primary Goals: Punctual arrival for important meetings, comfortable and professional transportation experience, consistent service quality, transparent pricing, professional driver appearance and behavior
+- Usage Patterns: 3-5 bookings per week, typically business hours, advance booking preferred, willing to pay premium for quality
+- Success Metrics: On-time performance >95%, professional satisfaction rating >4.5 stars, repeat booking rate >80%
+
+2. Daily Commuter (Secondary Persona - 30% of user base)
+- Demographics: Age 25-40, Income $40K-80K annually, Education: College degree, Location: Urban and suburban areas
+- Professional Profile: Office workers, managers, professionals seeking regular transportation solutions
+- Technology Comfort: Moderate to high, comfortable with mobile apps and digital payments
+- Transportation Needs: Regular weekly drivers for office commute, predictable schedules, cost-effective solutions
+- Current Pain Points: Inconsistent daily transportation options, high personal vehicle costs, parking challenges, traffic stress
+- Primary Goals: Cost-effective daily transportation, reliable schedule adherence, comfortable commute experience, flexible scheduling options
+- Usage Patterns: Daily or weekly bookings, fixed routes and times, price-sensitive, values consistency over luxury
+- Success Metrics: Cost savings >20% vs alternatives, schedule reliability >90%, driver consistency >70%
+
+3. Outstation Traveler (Secondary Persona - 20% of user base)
+- Demographics: Age 30-50, Income $50K-120K annually, Education: Various, Location: All regions
+- Professional Profile: Business travelers, tourists, family groups requiring long-distance transportation
+- Technology Comfort: Moderate, prefers simple and reliable mobile experiences
+- Transportation Needs: Experienced drivers for long-distance travel, safe and comfortable vehicles, knowledgeable local guides
+- Current Pain Points: Unfamiliar routes and destinations, safety concerns during long trips, vehicle reliability issues, communication barriers
+- Primary Goals: Safe and comfortable long-distance travel, knowledgeable drivers familiar with routes, reliable vehicles, transparent pricing for longer trips
+- Usage Patterns: Monthly or occasional bookings, multi-day trips, values safety and reliability, researches driver reviews thoroughly
+- Success Metrics: Trip completion rate >98%, safety satisfaction >4.8 stars, route knowledge rating >4.5 stars
+
+4. Premium Service User (Tertiary Persona - 10% of user base)
+- Demographics: Age 35-60, Income $100K+, High net worth individuals
+- Professional Profile: Executives, entrepreneurs, VIPs requiring luxury transportation
+- Transportation Needs: Premium vehicles, highly professional drivers, discretion and privacy
+- Goals: Luxury experience, complete reliability, privacy and security, personalized service
+
+Comprehensive Key User Flows:
+- Enhanced Driver Discovery Flow: Home Screen → Advanced Filter Panel → Smart Driver Recommendations → Driver List with Sorting → Detailed Driver Profile → Availability Calendar → Booking Initiation
+- Complete Booking Flow: Driver Selection → Trip Type Selection → Date/Duration Picker → Service Customization → Real-time Price Calculator → Payment Method Selection → Booking Confirmation → Driver Notification → Confirmation Receipt
+- Advanced Profile Management Flow: Profile Tab → Personal Information Editor → Payment Methods Manager → Notification Preferences → Privacy Settings → Travel History → Support Center → Account Settings → Secure Logout
+- Comprehensive Booking Management Flow: Bookings Dashboard → Upcoming/Past/Cancelled Tabs → Advanced Search and Filters → Individual Booking Details → Real-time Tracking → Action Menu (Cancel/Modify/Reschedule/Rate) → Confirmation and Notifications
+
+Advanced UI/UX Considerations:
+- Premium, clean minimalist interface with sophisticated visual hierarchy and focus on essential information presentation
+- Consistent professional color scheme reflecting trust, reliability, and premium service quality
+- Large, touch-friendly interactive elements optimized for one-handed mobile operation
+- Sophisticated card-based layouts with proper spacing for easy information scanning and quick decision-making
+- High-quality professional imagery and custom iconography maintaining brand consistency
+- Advanced accessibility features including high contrast color combinations, large text options, voice-over support, and screen reader compatibility
+- Mobile-first responsive design optimized for various screen sizes and device orientations
+- Performance optimization with fast loading times, efficient image compression, and lazy loading
+- Progressive web app capabilities for cross-platform accessibility and offline functionality
+- Advanced animation and micro-interactions enhancing user engagement without compromising performance
+</context>
+<PRD>
+# Technical Architecture  
+
+System Components:
+- Frontend: React Native with Expo framework
+- Navigation: Expo Router with tab-based navigation  
+- State Management: React Context API with hooks
+- UI Components: Custom themed components with consistent styling
+- Backend: Firebase Authentication, Firestore database, Firebase Storage
+- API Layer: Express.js REST API for business logic
+- Push Notifications: Firebase Cloud Messaging
+- Third-party Integrations: Google Maps API, Razorpay/Stripe payments, Firebase Analytics
+
+Data Models:
+- User Model: id, email, name, phone, profileImage, createdAt, lastLogin, preferences, bookingHistory
+- Driver Model: id, name, rating, totalTrips, price, profileImage, vehicle, badges, languages, experience, reviews, availability
+- Booking Model: id, userId, driverId, startDate, endDate, duration, totalAmount, status, paymentStatus, location, notes
+- Payment Method Model: id, type (card/upi/bank), name, details, isDefault
+
+APIs and Integrations:
+- GET /api/drivers - Fetch available drivers with filtering
+- GET /api/drivers/:id - Get detailed driver information  
+- POST /api/bookings - Create new booking
+- GET /api/users/:id/bookings - Fetch user bookings
+- POST /api/users/:id/payment-methods - Add payment method
+- POST /api/drivers/:id/reviews - Submit driver review
+- Real-time Firestore listeners for booking status updates
+- Push notifications for booking confirmations and updates
+
+Infrastructure Requirements:
+- Node.js v16+ for backend development
+- Expo CLI for React Native development
+- Firebase project with enabled services (Auth, Firestore, Storage, Analytics)
+- Git repository with CI/CD pipeline
+- Firebase hosting for web components
+- Expo Application Services (EAS) for app builds
+- CDN for image and static asset delivery
+- Monitoring and logging services
+
+# Development Roadmap  
+
+Phase 1: Foundation & Core Features (MVP)
+- User Authentication System: Firebase Auth integration, Login/Signup screens, Password reset functionality, Basic profile management
+- Driver Discovery: Driver listing with basic information, Simple filtering by trip type, Driver detail view, Basic search functionality
+- Basic Booking System: Date selection calendar, Simple booking creation, Price calculation, Booking confirmation
+- Essential UI Components: Navigation structure, Core layouts and screens, Basic styling and theming, Loading and error states
+
+Phase 2: Enhanced User Experience
+- Advanced Driver Features: Detailed driver profiles, Review and rating display, Vehicle information, Badge system for specializations
+- Enhanced Booking Management: Booking history and management, Booking modification capabilities, Status tracking and updates, Cancellation functionality
+- Improved UI/UX: Polished design system, Smooth animations and transitions, Responsive design optimization, Accessibility improvements
+- Search and Filtering: Advanced filtering options, Sorting capabilities, Location-based search, Saved search preferences
+
+Phase 3: Payment & Transaction Management
+- Payment Integration: Multiple payment method support, Secure payment processing, Payment method management, Transaction history
+- Financial Features: Detailed price breakdowns, Discount and promo code system, Refund processing, Invoice generation
+- Security Enhancements: Payment data encryption, Fraud detection measures, Secure transaction logging, Compliance with financial regulations
+
+Phase 4: Communication & Support
+- In-App Communication: User-driver messaging, Real-time chat functionality, Emergency contact features, Notification system
+- Customer Support: Help documentation, FAQ system, Ticket-based support, Live chat support
+- Review and Rating System: Comprehensive rating system, Detailed review submission, Review moderation tools, Rating analytics
+
+Phase 5: Advanced Features & Analytics
+- Advanced Analytics: User behavior tracking, Booking pattern analysis, Driver performance metrics, Business intelligence dashboard
+- Personalization: Personalized driver recommendations, Custom preferences and settings, Location-based suggestions, Smart notifications
+- Performance Optimization: App performance monitoring, Loading time optimization, Crash reporting and resolution, User experience analytics
+
+# Logical Dependency Chain
+
+Foundation First (Phase 1):
+1. Authentication Infrastructure - Must be built first as it's required for all user-specific features
+2. Basic Data Models - Core data structures for users, drivers, and bookings
+3. Navigation Framework - Essential for app structure and user flow
+4. Driver Service Integration - Connection to partner app data source
+
+Core User Journey (Phase 1-2):
+1. Driver Discovery - Users need to see available drivers
+2. Driver Details - Detailed information for decision making
+3. Basic Booking - Core transaction functionality
+4. Booking Management - Users need to track their bookings
+
+Transaction Layer (Phase 3):
+1. Payment Methods - Secure payment storage
+2. Payment Processing - Transaction execution
+3. Financial Tracking - Transaction history and receipts
+
+Communication Layer (Phase 4):
+1. Notification System - Essential for booking updates
+2. User-Driver Communication - Direct communication channel
+3. Support System - Issue resolution and help
+
+Intelligence Layer (Phase 5):
+1. Analytics Foundation - Data collection infrastructure
+2. Personalization Engine - Smart recommendations
+3. Performance Monitoring - App optimization and monitoring
+
+Quick Usability Milestones:
+- Week 2: Basic app structure with authentication
+- Week 4: Driver browsing functionality
+- Week 6: Complete booking flow
+- Week 8: Payment integration
+- Week 10: Communication features
+- Week 12: Polish and optimization
+
+# Risks and Mitigations  
+
+Technical Challenges:
+- Risk: Firebase integration complexity and potential service limitations
+- Mitigation: Implement robust error handling and fallback mechanisms, Design API layer to allow backend service switching, Use Firebase emulators for development and testing, Implement offline functionality for critical features
+
+- Risk: React Native performance issues on older devices
+- Mitigation: Implement lazy loading and code splitting, Optimize images and assets for mobile, Use performance monitoring tools, Test extensively on various device types and OS versions
+
+- Risk: Payment integration security vulnerabilities
+- Mitigation: Use established payment providers (Razorpay/Stripe), Implement PCI DSS compliance measures, Regular security audits and penetration testing, Encrypt sensitive data at rest and in transit
+
+MVP Definition and Scoping:
+- Risk: Feature creep leading to delayed MVP release
+- Mitigation: Strictly define MVP scope with essential features only, Implement feature flags for gradual rollout, Regular stakeholder reviews and scope validation, Focus on core user journey completion
+
+- Risk: Integration complexity with partner driver app
+- Mitigation: Define clear API contracts early, Implement mock data for development, Regular integration testing, Fallback to static data if real-time integration fails
+
+- Risk: User experience inconsistencies across platforms
+- Mitigation: Implement comprehensive design system, Regular UX testing and feedback collection, Platform-specific optimization where needed, Consistent navigation patterns
+
+Resource Constraints:
+- Risk: Limited development team bandwidth
+- Mitigation: Prioritize features based on user impact, Implement automated testing to reduce manual QA, Use existing libraries and components where possible, Implement CI/CD for efficient deployment
+
+- Risk: Third-party service dependencies and costs
+- Mitigation: Evaluate service pricing and scaling costs early, Implement usage monitoring and alerts, Design for service provider switching capability, Negotiate volume discounts where possible
+
+- Risk: App store approval delays
+- Mitigation: Follow platform guidelines strictly, Implement content moderation for user-generated content, Prepare for review process with comprehensive documentation, Have rollback plans for rejected submissions
+
+# Appendix  
+
+Research Findings:
+- Market Analysis: Growing demand for specialized transportation services, Users prefer transparency in pricing and driver background, Mobile-first approach essential for user adoption, Review and rating systems critical for trust building
+- Competitive Analysis: Traditional ride-sharing lacks specialization, Professional driver services often have poor mobile experience, Price transparency is a key differentiator, Real-time booking and communication expected by users
+- User Feedback: Professional appearance and reliability are top priorities, Flexible booking options (multi-day) are highly valued, Clear cancellation policies and refund processes essential, Direct communication with drivers important for coordination
+
+Technical Specifications:
+- Performance Requirements: App startup time: < 3 seconds, Screen transition time: < 500ms, API response time: < 2 seconds, Image loading time: < 1 second, Offline functionality for viewing booking history
+- Security Requirements: End-to-end encryption for sensitive data, Secure authentication with multi-factor support, PCI DSS compliance for payment processing, Regular security updates and patches, Data privacy compliance (GDPR/CCPA)
+- Scalability Considerations: Horizontal scaling capability for API services, CDN integration for global performance, Database optimization for large datasets, Caching strategies for frequently accessed data, Load balancing for high availability
+- Integration Points: Firebase services (Auth, Firestore, Storage, Analytics), Payment gateway APIs (Razorpay/Stripe), Google Maps API for location services, Push notification services, SMS/Email service providers, Partner app API for driver data synchronization
